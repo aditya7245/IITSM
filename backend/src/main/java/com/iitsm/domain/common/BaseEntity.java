@@ -3,7 +3,10 @@ package com.iitsm.domain.common;
 import jakarta.persistence.*;
 import java.time.Instant;
 
-/** Shared identity and audit timestamps for all persistent domain objects. */
+/**
+ * Shared identity and timestamps for tables that have BOTH created_at and updated_at
+ * (users, teams, incidents). Tables with only created_at extend CreatedOnlyEntity instead.
+ */
 @MappedSuperclass
 public abstract class BaseEntity {
 
@@ -17,10 +20,17 @@ public abstract class BaseEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** Lets a subclass fix the creation time before the first save (e.g. an incident's SLA start). */
+    protected void initCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
-        this.createdAt = now;
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
         this.updatedAt = now;
     }
 
