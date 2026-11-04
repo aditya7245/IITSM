@@ -1,0 +1,4 @@
+# Production: no dev seed data; secrets must come from the environment.
+iitsm:
+  security:
+    jwt-secret: ${JWT_SECRET}

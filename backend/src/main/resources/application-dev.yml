@@ -1,0 +1,6 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev   # dev-only seed users and services
+logging:
+  level:
+    com.iitsm: DEBUG
