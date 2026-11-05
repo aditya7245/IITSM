@@ -10,175 +10,41 @@ CS F213 OOP course project (due 22 Nov 2026). Employees report IT incidents; the
 
 # 1. How to run everything
 
-## Prerequisites
-
-| Tool | Version | Check with |
-|---|---|---|
-| Java (JDK) | 21 | `java -version` |
-| Maven | 3.9+ | `mvn -v` |
-| Docker Desktop (must be **running**) | recent | `docker version` |
-| Git | any recent | `git --version` |
-| GitHub CLI (optional) | any | `gh --version` |
-| Node.js (only when the frontend exists) | 20+ | `node -v` |
-
-## Step 1: Get the code
+**Needs:** Java 21, Maven, Docker Desktop (running), Git.
 
 ```bash
-gh repo clone aditya7245/IITSM        # or: git clone https://github.com/aditya7245/IITSM.git
+git clone https://github.com/aditya7245/IITSM.git
 cd IITSM
-```
-
-(If your folder is named `iitsm`, use that name in the commands below. The repo root is the folder containing `docker-compose.yml`.)
-
-## Step 2: Start the database and the fake mail server
-
-```bash
-docker compose up -d          # starts Postgres (5432) and Mailpit (1025 SMTP, 8025 web UI)
-docker compose ps             # both containers should say "running" (Postgres: "healthy")
-```
-
-Useful variants:
-
-```bash
-docker compose logs -f postgres     # watch database logs (Ctrl+C to stop watching)
-docker compose down                 # stop containers, KEEP the data
-docker compose down -v              # stop containers and DELETE the data (fresh database)
-```
-
-## Step 3: Start the backend
-
-```bash
+docker compose up -d                  # Postgres + Mailpit
 cd backend
-mvn spring-boot:run
+mvn spring-boot:run                   # API on http://localhost:8080
 ```
-
-First start takes a minute (downloads dependencies). On startup Flyway creates all tables and, in the default `dev` profile, inserts the demo users. The backend is ready when you see `Started IitsmApplication`.
 
 | What | URL |
 |---|---|
-| API base | http://localhost:8080 |
-| Swagger UI (try the API in the browser) | http://localhost:8080/swagger-ui.html |
-| Health check | http://localhost:8080/actuator/health |
-| Mailpit (see the emails the app "sends") | http://localhost:8025 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Health | http://localhost:8080/actuator/health |
+| Mailpit (caught emails) | http://localhost:8025 |
 
-Stop the backend with `Ctrl+C`.
-
-## Step 4: Check it works (log in)
-
-PowerShell:
+**Check it works** (PowerShell):
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/login `
-  -ContentType "application/json" `
-  -Body '{"email":"admin@iitsm.local","password":"Password@123"}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/login -ContentType "application/json" -Body '{"email":"admin@iitsm.local","password":"Password@123"}'
 ```
 
-curl (Git Bash, macOS, Linux):
+You should get a `token` back. Demo users (dev profile, password `Password@123`): `admin@`, `manager@`, `lead.app@`, `tech1@`, `tech2@`, `tech3@`, `emp1@`, `emp2@` + `iitsm.local`.
 
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@iitsm.local","password":"Password@123"}'
-```
+**Run tests** (Docker must be running): `cd backend && mvn verify`
 
-You should get back JSON containing a `token`. In Swagger UI you can paste that token into the **Authorize** button to call protected endpoints.
+**Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database)
 
-**Demo users** (dev profile only; all passwords are `Password@123`, all emails end in `@iitsm.local`):
-
-| Email prefix | Role |
-|---|---|
-| admin | Administrator |
-| manager | IT Manager |
-| lead.app | Team Lead |
-| tech1, tech2, tech3 | Technician |
-| emp1, emp2 | Employee |
-
-## Step 5: Run the tests
-
-```bash
-cd backend
-mvn verify                              # compile + all tests (Docker must be running)
-mvn test                                # tests only
-mvn -Dtest=BaseEntitiesTest test        # one test class
-mvn -Dtest=IitsmApplicationTests test   # the database smoke test
-```
-
-The smoke test starts its own throwaway Postgres with Testcontainers, so it does not touch the database from Step 2.
-
-## Step 6: Look inside the database
-
-```bash
-docker exec -it iitsm-postgres psql -U iitsm -d iitsm
-```
-
-Inside `psql`:
-
-```sql
-\dt                                          -- list tables
-select id, role, email from users;
-select version, description, success from flyway_schema_history;
-\q                                           -- quit
-```
-
-## Step 7: Build a runnable jar (optional)
-
-```bash
-cd backend
-mvn package -DskipTests
-java -jar target/iitsm-backend-0.1.0-SNAPSHOT.jar
-```
-
-## Step 8: Frontend (not built yet)
-
-Once the `frontend/` app exists (checklist phase 7):
-
-```bash
-cd frontend
-npm install
-npm run dev          # http://localhost:5173
-```
-
-## Configuration (environment variables)
-
-Everything has a working default for local development. Override only if needed.
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `SPRING_PROFILES_ACTIVE` | `dev` | `dev` = demo users loaded; `prod` = no demo data, `JWT_SECRET` required |
-| `DB_HOST`, `DB_PORT` | `localhost`, `5432` | Postgres location |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `iitsm` | Database name and credentials (must match `docker-compose.yml`) |
-| `JWT_SECRET` | dev-only value | Token signing key, at least 32 characters. **Always set a real one outside dev** |
-| `CORS_ORIGINS` | `http://localhost:5173` | Frontend origin allowed to call the API |
-| `MAIL_HOST`, `MAIL_PORT` | `localhost`, `1025` | SMTP server (Mailpit in dev) |
-
-Setting one in PowerShell for the current window: `$env:JWT_SECRET = "some-long-random-text-at-least-32-chars"`. Copy `.env.example` to `.env` for your own local values (`.env` is git-ignored).
-
-## Everyday Git workflow
-
-```bash
-git pull                                  # start from the latest main
-git checkout -b feature/1.2-enums         # one branch per checklist item
-# ...make changes...
-cd backend && mvn verify && cd ..         # must pass before pushing
-git add .
-git status                                # check what you are about to commit
-git commit -m "Add incident enums (1.2)"
-git push -u origin feature/1.2-enums
-gh pr create --fill                       # open a pull request, then merge on GitHub
-git checkout main && git pull             # back to main for the next item
-```
-
-## Troubleshooting
+**If something breaks**
 
 | Problem | Fix |
 |---|---|
-| `mvn verify` fails with "Could not find a valid Docker environment" and a `400` | Docker Desktop is newer than the Testcontainers client. `pom.xml` already pins `testcontainers.version` to 1.21.4. If it still fails, run once in PowerShell: `"api.version=1.44" \| Out-File -Encoding ascii "$HOME\.docker-java.properties"`. Also make sure Docker Desktop is running |
-| App cannot connect to the database (`Connection refused`) | Run `docker compose up -d` and wait until Postgres is `healthy` in `docker compose ps` |
-| Port 5432 or 8080 already in use | Stop the other program using it, or change the port mapping in `docker-compose.yml` / `server.port` |
-| Flyway error "checksum mismatch" or "validate failed" | Someone edited an existing migration. Never edit V1 to V3 (or any applied migration); add a new `V<n>` file. To reset your local database: `docker compose down -v` then start again |
-| Startup error "Schema-validation: wrong column type" | A Java entity does not match its table. Check the type mapping rules in the checklist (SMALLINT -> `short`, and so on) |
-| `mvn` or `java` not found | Install JDK 21 and Maven and reopen the terminal; check `JAVA_HOME` |
-| Login returns 401 | Wrong email or password, or the dev profile is not active (demo users only exist in `dev`) |
+| Test error "Could not find a valid Docker environment" | Start Docker Desktop. If it still fails, run once: `"api.version=1.44" \| Out-File -Encoding ascii "$HOME\.docker-java.properties"` |
+| "Connection refused" to the database | Run `docker compose up -d` and wait a few seconds |
+| Flyway "checksum mismatch" | A migration was edited. Don't edit V1 to V3; add a new `V<n>` file. Locally: `docker compose down -v` and restart |
 
 ---
 
