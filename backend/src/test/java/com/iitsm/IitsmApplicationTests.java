@@ -2,26 +2,14 @@ package com.iitsm;
 
 import com.iitsm.domain.user.*;
 import com.iitsm.repository.UserRepository;
+import com.iitsm.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Smoke test: Flyway migrations apply, Hibernate validates the mapping, and the user hierarchy loads polymorphically. */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("dev")
-class IitsmApplicationTests {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+class IitsmApplicationTests extends AbstractIntegrationTest {
 
     @Autowired UserRepository users;
 

@@ -56,11 +56,11 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 2 of 53 (items 1.1 and 1.2; 1.1 counts once `patch-1.1-base-entities` is applied and `mvn verify` passes).
+**Checklist items done:** 3 of 53 (items 1.1, 1.2 and 1.3).
 
 | Phase | Items | Done |
 |---|---|---|
-| 1 Foundations | 1.1 to 1.10 | 1.1, 1.2 |
+| 1 Foundations | 1.1 to 1.10 | 1.1, 1.2, 1.3 |
 | 2 Pure business rules | 2.1 to 2.8 | none |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
@@ -92,7 +92,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 ### Phase 1: Foundations (types, config, entities, repositories)
 
-- [x] **1.1 Base entity classes.** *Status: done (patch provided; apply, run `mvn verify`, commit).*
+- [x] **1.1 Base entity classes.** *Status: done.*
   **In plain words:** Some database tables record only when a row was created, others also when it was last changed. We need two small parent classes so each table's Java class matches its table exactly. We also let an incident's creation time be set by us, because the SLA timer starts from it.
   **Details for Claude:** `BaseEntity` gains `protected void initCreatedAt(Instant)` and `onCreate()` keeps a `createdAt` that is already set. New `CreatedOnlyEntity` (`@MappedSuperclass`: id, `createdAt` set in `@PrePersist` unless preset, same `initCreatedAt`, same equals/hashCode style) in `domain/common`.
   *Done when:* `BaseEntitiesTest` passes and the smoke test still passes.
@@ -102,7 +102,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** In `domain/incident`: `IncidentStatus` (NEW, CLASSIFIED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO, RESOLVED, VERIFIED, CLOSED, CANCELLED, DUPLICATE) with `isTerminal()` (CLOSED, CANCELLED, DUPLICATE), `isOpen()` (not terminal) and `countsTowardWorkload()` (ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO). `Priority` (P1, P2, P3, P4) with `bump()` returning the next more urgent tier (P4 -> P3 -> P2 -> P1; P1 stays P1). `SlaStatus` (ON_TRACK, AT_RISK, VIOLATED, declared in increasing severity). `CommentType` (NOTE, INFO_REQUEST, INFO_RESPONSE).
   *Done when:* unit tests cover `bump()` and the three status helpers.
 
-- [ ] **1.3 Time and test infrastructure.** *Status: not started.*
+- [x] **1.3 Time and test infrastructure.** *Status: done.*
   **In plain words:** Tests need to control the clock (to check SLA deadlines without waiting) and share one database setup. This item builds both, plus a few error types and settings classes later items need.
   **Details for Claude:** A `Clock` bean (`Clock.systemUTC()`) in `config/`. `SlaProperties(double timeScale, double warningThreshold, long monitorIntervalMs)` bound to `iitsm.sla`, and `EscalationProperties(long levelTimeoutMinutes)` bound to `iitsm.escalation` (records, picked up by the existing `@ConfigurationPropertiesScan`). `InvalidInputException` (HTTP 400) and `DuplicateResourceException` (HTTP 409) in `exception/`. In `src/test`: `MutableClock` (a `Clock` whose time tests can set and advance), a `@TestConfiguration` providing it as `@Primary`, and `AbstractIntegrationTest` (Postgres Testcontainer with `@ServiceConnection`, `@ActiveProfiles("dev")`, `@SpringBootTest`) refactored out of `IitsmApplicationTests`.
   *Done when:* `IitsmApplicationTests` extends `AbstractIntegrationTest` and passes; a test advances `MutableClock` and reads it back.
