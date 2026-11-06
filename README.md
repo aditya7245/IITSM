@@ -56,11 +56,11 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 6 of 53 (items 1.1 to 1.6).
+**Checklist items done:** 7 of 53 (items 1.1 to 1.7).
 
 | Phase | Items | Done |
 |---|---|---|
-| 1 Foundations | 1.1 to 1.10 | 1.1 to 1.6 |
+| 1 Foundations | 1.1 to 1.10 | 1.1 to 1.7 |
 | 2 Pure business rules | 2.1 to 2.8 | none |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
@@ -122,7 +122,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `SystemConfig` entity (String id `configKey`, `configValue`, description). `ConfigKeys` constants for the seeded keys (`assignment.strategy`, `duplicate.threshold`, `duplicate.window.hours`, `priority.bump.users`). `ConfigService` with `getString(key, default)`, `getInt(key, default)`, `getDouble(key, default)` and `set(key, value)`.
   *Done when:* tests read each seeded key with the correct type and a missing key returns the default.
 
-- [ ] **1.7 SLA policy lookup.** *Status: not started.*
+- [x] **1.7 SLA policy lookup.** *Status: done.*
   **In plain words:** Given a priority and a service, find out how many minutes the team has to respond and resolve. A service can override the default times.
   **Details for Claude:** `SlaPolicy` entity (`Priority priority`, nullable `ITService service`, `int responseMinutes`, `int resolutionMinutes`). `SlaPolicyService.findPolicy(Priority, ITService)`: a policy for that service and priority wins; otherwise the default (service null) for the priority; otherwise throw `MissingSlaConfigurationException`.
   *Done when:* tests cover the service override, the default fallback and the exception (use a service-specific row inserted by the test).
