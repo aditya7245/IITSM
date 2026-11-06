@@ -56,11 +56,11 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 3 of 53 (items 1.1, 1.2 and 1.3).
+**Checklist items done:** 4 of 53 (items 1.1 to 1.4).
 
 | Phase | Items | Done |
 |---|---|---|
-| 1 Foundations | 1.1 to 1.10 | 1.1, 1.2, 1.3 |
+| 1 Foundations | 1.1 to 1.10 | 1.1 to 1.4 |
 | 2 Pure business rules | 2.1 to 2.8 | none |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
@@ -107,7 +107,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** A `Clock` bean (`Clock.systemUTC()`) in `config/`. `SlaProperties(double timeScale, double warningThreshold, long monitorIntervalMs)` bound to `iitsm.sla`, and `EscalationProperties(long levelTimeoutMinutes)` bound to `iitsm.escalation` (records, picked up by the existing `@ConfigurationPropertiesScan`). `InvalidInputException` (HTTP 400) and `DuplicateResourceException` (HTTP 409) in `exception/`. In `src/test`: `MutableClock` (a `Clock` whose time tests can set and advance), a `@TestConfiguration` providing it as `@Primary`, and `AbstractIntegrationTest` (Postgres Testcontainer with `@ServiceConnection`, `@ActiveProfiles("dev")`, `@SpringBootTest`) refactored out of `IitsmApplicationTests`.
   *Done when:* `IitsmApplicationTests` extends `AbstractIntegrationTest` and passes; a test advances `MutableClock` and reads it back.
 
-- [ ] **1.4 Migration V4.** *Status: not started.*
+- [x] **1.4 Migration V4.** *Status: done.*
   **In plain words:** Incidents need readable numbers like INC1001, generated safely by the database. We also loosen the duplicate-detection setting so it actually catches similar short titles.
   **Details for Claude:** `V4__incident_number_sequence.sql`: `CREATE SEQUENCE incident_number_seq START 1001;` and `UPDATE system_config SET config_value = '0.3' WHERE config_key = 'duplicate.threshold';` (0.5 was too strict for short titles). Add `IncidentNumberGenerator.next()` that runs `select nextval('incident_number_seq')` through `JdbcTemplate` and returns `"INC" + n`.
   *Done when:* an integration test shows two calls return `INC1001` and `INC1002`, and the threshold row reads `0.3`.
