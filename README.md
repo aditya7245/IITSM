@@ -56,11 +56,11 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 1 of 53 (item 1.1, once `patch-1.1-base-entities` is applied and `mvn verify` passes).
+**Checklist items done:** 2 of 53 (items 1.1 and 1.2; 1.1 counts once `patch-1.1-base-entities` is applied and `mvn verify` passes).
 
 | Phase | Items | Done |
 |---|---|---|
-| 1 Foundations | 1.1 to 1.10 | 1.1 |
+| 1 Foundations | 1.1 to 1.10 | 1.1, 1.2 |
 | 2 Pure business rules | 2.1 to 2.8 | none |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
@@ -97,7 +97,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `BaseEntity` gains `protected void initCreatedAt(Instant)` and `onCreate()` keeps a `createdAt` that is already set. New `CreatedOnlyEntity` (`@MappedSuperclass`: id, `createdAt` set in `@PrePersist` unless preset, same `initCreatedAt`, same equals/hashCode style) in `domain/common`.
   *Done when:* `BaseEntitiesTest` passes and the smoke test still passes.
 
-- [ ] **1.2 Enums.** *Status: not started.*
+- [x] **1.2 Enums.** *Status: done.*
   **In plain words:** Fixed lists of values the whole app uses (incident statuses, priorities, SLA states, comment types), with small helper methods such as "is this incident still open?".
   **Details for Claude:** In `domain/incident`: `IncidentStatus` (NEW, CLASSIFIED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO, RESOLVED, VERIFIED, CLOSED, CANCELLED, DUPLICATE) with `isTerminal()` (CLOSED, CANCELLED, DUPLICATE), `isOpen()` (not terminal) and `countsTowardWorkload()` (ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO). `Priority` (P1, P2, P3, P4) with `bump()` returning the next more urgent tier (P4 -> P3 -> P2 -> P1; P1 stays P1). `SlaStatus` (ON_TRACK, AT_RISK, VIOLATED, declared in increasing severity). `CommentType` (NOTE, INFO_REQUEST, INFO_RESPONSE).
   *Done when:* unit tests cover `bump()` and the three status helpers.
