@@ -56,12 +56,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 12 of 53 (all of Phase 1, plus 2.1 and 2.2).
+**Checklist items done:** 13 of 53 (all of Phase 1, plus 2.1 to 2.3).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
-| 2 Pure business rules | 2.1 to 2.8 | 2.1, 2.2 |
+| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.3 |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
@@ -167,7 +167,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
   *Done when:* one test iterates all 11 x 11 pairs and asserts exactly the table above is allowed; `NEW -> CLOSED` throws.
 
-- [ ] **2.3 SLA evaluator.** *Status: not started.*
+- [x] **2.3 SLA evaluator.** *Status: done.*
   **In plain words:** The stopwatch logic. It works out the response and resolution deadlines, and says whether an incident is on track, close to its deadline (80%), or late. Time spent waiting for the user does not count.
   **Details for Claude:** A pure `SlaEvaluator` class. `Deadlines computeDeadlines(Instant start, int responseMinutes, int resolutionMinutes, double timeScale, long pausedSeconds)`: each window is `minutes * 60 / timeScale` seconds; deadline = start + window + pausedSeconds. `SlaStatus evaluate(...)` takes `createdAt`, `responseDeadline`, `resolutionDeadline`, `respondedAt`, `resolvedAt`, `slaPausedAt`, `slaPausedSeconds`, `now`, `warningThreshold`. Rules: `effectiveNow = slaPausedAt != null ? slaPausedAt : now`. For each phase compute `ref` = `respondedAt` (response phase) or `resolvedAt` (resolution phase) if set, else `effectiveNow`. Phase status is VIOLATED if `ref` is after the deadline; else AT_RISK if the paused-excluded elapsed time `(ref - createdAt - pausedSeconds)` is at least `warningThreshold x (deadline - createdAt - pausedSeconds)` **and the phase is not yet completed**; else ON_TRACK. Overall = the worse of the two phases.
   *Done when:* tests cover exactly 80% (AT_RISK), just under 80% (ON_TRACK), exactly at the deadline (not violated), 1 second late (violated), a response met in time while resolution is pending, a paused incident not drifting, and a time-scale of 10.
