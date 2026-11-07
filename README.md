@@ -56,12 +56,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 10 of 53 (items 1.1 to 1.10, so Phase 1 is complete).
+**Checklist items done:** 11 of 53 (all of Phase 1, plus 2.1).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
-| 2 Pure business rules | 2.1 to 2.8 | none |
+| 2 Pure business rules | 2.1 to 2.8 | 2.1 |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
@@ -144,7 +144,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 ### Phase 2: Pure business rules (plain JUnit, no database)
 
-- [ ] **2.1 Priority calculator (Strategy).** *Status: not started.*
+- [x] **2.1 Priority calculator (Strategy).** *Status: done.*
   **In plain words:** The rule that turns "how bad, how urgent, how important is the service" into P1 to P4, automatically.
   **Details for Claude:** `PriorityCalculator` interface: `PriorityResult calculate(int impact, int urgency, int criticality, int affectedUsers, int bumpUsersThreshold)`; `record PriorityResult(int score, Priority priority)`. `ScoreBasedPriorityCalculator`: score = impact (1 to 3) x urgency (1 to 3) x criticality (1 to 5); score >= 27 is P1, 12 to 26 is P2, 5 to 11 is P3, under 5 is P4. Then if `affectedUsers >= bumpUsersThreshold`, apply `bump()`. Out-of-range inputs throw `InvalidInputException`.
   *Done when:* boundary tests pass for scores 27, 26, 12, 11, 5, 4, 1, 45, the bump at 99 versus 100 users, and P1 staying P1 after a bump.
