@@ -56,11 +56,11 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 9 of 53 (items 1.1 to 1.9).
+**Checklist items done:** 10 of 53 (items 1.1 to 1.10, so Phase 1 is complete).
 
 | Phase | Items | Done |
 |---|---|---|
-| 1 Foundations | 1.1 to 1.10 | 1.1 to 1.9 |
+| 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | none |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
@@ -137,7 +137,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `IncidentComment` (incident, author, `CommentType type`, body), `Feedback` (one-to-one incident, `short rating`, comments), `AuditLog` (incident nullable, user nullable, `action` string, `previousState`, `newState` strings, description; constructor only, no setters), `Notification` (user, incident nullable, `eventType` string, `message`, boolean field mapped to column `is_read` with `markRead()`), all extending `CreatedOnlyEntity`. Repositories for each.
   *Done when:* a test saves one of each and reloads it.
 
-- [ ] **1.10 Repository queries needed later.** *Status: not started.*
+- [x] **1.10 Repository queries needed later.** *Status: done.*
   **In plain words:** A few database questions later features will ask: who are exactly the administrators, which technicians are free, how many active incidents does a technician have.
   **Details for Claude:** `UserRepository`: `@Query("select u from User u where type(u) = :type") List<User> findAllByExactType(@Param("type") Class<? extends User> type)` (returns only the exact type, so administrators exclude IT managers; the escalation chain needs this). `TechnicianRepository extends JpaRepository<Technician, Long>` with `findByActiveTrueAndAvailableTrue()`. `IncidentRepository`: `long countByAssigneeIdAndStatusIn(Long, Collection<IncidentStatus>)`, `List<Incident> findByStatusNotIn(Collection<IncidentStatus>)`, `List<Incident> findByServiceIdAndStatusNotInAndCreatedAtAfter(Long, Collection<IncidentStatus>, Instant)`.
   *Done when:* integration tests confirm `findAllByExactType(Administrator.class)` returns the admin only and `ITManager.class` returns the manager only.
