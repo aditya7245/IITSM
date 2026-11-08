@@ -56,12 +56,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 16 of 53 (all of Phase 1, plus 2.1 to 2.6).
+**Checklist items done:** 17 of 53 (all of Phase 1, plus 2.1 to 2.7).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
-| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.6 |
+| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.7 |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
@@ -187,7 +187,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `CategorySuggester.suggest(String text, List<Category> categories)` returns a list of `CategoryScore(Category, int hits)` sorted by hits descending. A category's `keywords` are comma-separated single words; `hits` is the number of its keywords present in `TextTokenizer.tokens(text)`. Inactive categories are skipped; categories with zero hits are omitted; ties go to the lower id.
   *Done when:* tests use the seeded keywords: "payment transaction failing" ranks Application first, "cannot login password locked" ranks Authentication first, and unrelated text returns an empty list.
 
-- [ ] **2.7 Similarity strategy.** *Status: not started.*
+- [x] **2.7 Similarity strategy.** *Status: done.*
   **In plain words:** A score from 0 to 1 for how alike two texts are. Used to spot duplicate reports.
   **Details for Claude:** `SimilarityStrategy` interface (`double similarity(String a, String b)`) and `JaccardSimilarityStrategy`: |tokens(a) intersect tokens(b)| / |union|, and 0 if both sets are empty.
   *Done when:* tests cover identical text (1.0), disjoint text (0.0), a known partial overlap, and empty input.
