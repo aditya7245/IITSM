@@ -56,12 +56,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 13 of 53 (all of Phase 1, plus 2.1 to 2.3).
+**Checklist items done:** 15 of 53 (all of Phase 1, plus 2.1 to 2.5).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
-| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.3 |
+| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.5 |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
@@ -172,12 +172,12 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** A pure `SlaEvaluator` class. `Deadlines computeDeadlines(Instant start, int responseMinutes, int resolutionMinutes, double timeScale, long pausedSeconds)`: each window is `minutes * 60 / timeScale` seconds; deadline = start + window + pausedSeconds. `SlaStatus evaluate(...)` takes `createdAt`, `responseDeadline`, `resolutionDeadline`, `respondedAt`, `resolvedAt`, `slaPausedAt`, `slaPausedSeconds`, `now`, `warningThreshold`. Rules: `effectiveNow = slaPausedAt != null ? slaPausedAt : now`. For each phase compute `ref` = `respondedAt` (response phase) or `resolvedAt` (resolution phase) if set, else `effectiveNow`. Phase status is VIOLATED if `ref` is after the deadline; else AT_RISK if the paused-excluded elapsed time `(ref - createdAt - pausedSeconds)` is at least `warningThreshold x (deadline - createdAt - pausedSeconds)` **and the phase is not yet completed**; else ON_TRACK. Overall = the worse of the two phases.
   *Done when:* tests cover exactly 80% (AT_RISK), just under 80% (ON_TRACK), exactly at the deadline (not violated), 1 second late (violated), a response met in time while resolution is pending, a paused incident not drifting, and a time-scale of 10.
 
-- [ ] **2.4 Incident behaviour methods.** *Status: not started.*
+- [x] **2.4 Incident behaviour methods.** *Status: done.*
   **In plain words:** Teach the Incident object to do things itself (acknowledge, resolve, pause the SLA clock, and so on), always checking the rulebook from 2.2 first.
   **Details for Claude:** Add these to `Incident`, each calling `IncidentStateMachine.requireTransition` first and taking `Instant now` where time matters: `classify(Priority, int score, Instant responseDeadline, Instant resolutionDeadline)` (NEW -> CLASSIFIED); `assignTo(Technician)` (CLASSIFIED -> ASSIGNED; also allowed while already ASSIGNED, as a reassignment, with no status change); `acknowledge(now)` (ASSIGNED -> ACKNOWLEDGED, sets `respondedAt`); `startProgress()`; `requestInfo(now)` (IN_PROGRESS -> PENDING_INFO, sets `slaPausedAt`); `receiveInfo(now)` (PENDING_INFO -> IN_PROGRESS; adds the pause length to both deadlines and to `slaPausedSeconds`, clears `slaPausedAt`); `resolve(String text, now)` (non-blank text, sets `resolution` and `resolvedAt`); `verify()`; `reopen()` (RESOLVED -> IN_PROGRESS, clears `resolution` and `resolvedAt`); `close(now)`; `cancel()`; `markDuplicateOf(Incident original)` (original must be a different incident); `changePriority(Priority, int score, Instant responseDeadline, Instant resolutionDeadline)` (allowed only before RESOLVED); `raiseSlaStatus(SlaStatus)` (never lowers severity); `incrementEscalationLevel()`.
   *Done when:* unit tests walk the full happy path, the pause/resume deadline shift, reopen, and one invalid call per method.
 
-- [ ] **2.5 Text tokenizer.** *Status: not started.*
+- [x] **2.5 Text tokenizer.** *Status: done.*
   **In plain words:** Breaks a sentence into clean lowercase keywords, ignoring filler words like "the" and "is". The smart features that compare text all rely on it.
   **Details for Claude:** `TextTokenizer.tokens(String)` returns a `Set<String>`: lower-case, split on non-letter/non-digit characters, drop tokens shorter than 2 characters, drop these stop words: the, a, an, is, are, was, were, be, been, to, of, in, on, at, for, and, or, with, my, our, we, i, it, its, this, that, has, have, had, not, no, from, by, as, can, cannot, please. No stemming.
   *Done when:* tests cover punctuation, case, stop words, null and empty input.
