@@ -56,13 +56,13 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 20 of 53 (all of Phase 1 and Phase 2, plus 3.1 and 3.2).
+**Checklist items done:** 21 of 53 (all of Phase 1 and Phase 2, plus 3.1 to 3.3).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
-| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1, 3.2 |
+| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1 to 3.3 |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
@@ -209,7 +209,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `AuditObserver` (`@Order(1)`) writes one `AuditLog` row per event: incident, actor (null for system), `action` = event type name, previous and new status names, description. It runs inside the caller's transaction, so a failed audit write rolls back the business change. `AuditService.history(Long incidentId)` returns rows ordered by `createdAt`, then `id`.
   *Done when:* an integration test publishes an event and reads it back, and a second test shows a JDBC `UPDATE audit_logs ...` fails (the database trigger).
 
-- [ ] **3.3 Notification channels (Factory pattern).** *Status: not started.*
+- [x] **3.3 Notification channels (Factory pattern).** *Status: done.*
   **In plain words:** The ways we can notify someone: a message inside the app and an email. A small factory hands out the right one, so a new channel (like SMS) can be added later.
   **Details for Claude:** `enum ChannelType { IN_APP, EMAIL }`. `record NotificationMessage(User recipient, Incident incident, IncidentEventType type, String text)`. `NotificationChannel` interface: `ChannelType type()`, `void send(NotificationMessage)`. `InAppChannel` saves a `Notification` row. `EmailChannel` uses `JavaMailSender`, sender from `iitsm.mail.from`, subject `[INC1001] <short event title>`, plain-text body, and catches and logs (warn) any mail exception instead of throwing. `NotificationChannelFactory.get(ChannelType)` builds its map from the injected `List<NotificationChannel>` and throws `IllegalArgumentException` for a missing type.
   *Done when:* tests cover the factory, the in-app save, and the email channel with a mocked `JavaMailSender` including the failure path.
