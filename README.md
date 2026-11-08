@@ -56,13 +56,13 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 18 of 53 (all of Phase 1 and Phase 2).
+**Checklist items done:** 19 of 53 (all of Phase 1 and Phase 2, plus 3.1).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
-| 3 Events, audit, notifications | 3.1 to 3.4 | none |
+| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1 |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
@@ -199,7 +199,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 ### Phase 3: Events, audit and notifications
 
-- [ ] **3.1 Event model and observer plumbing (Observer pattern).** *Status: not started.*
+- [x] **3.1 Event model and observer plumbing (Observer pattern).** *Status: done.*
   **In plain words:** Whenever something happens to an incident, the system announces it, and independent listeners (audit log, notifications) react. This builds the announcement and the listener mechanism.
   **Details for Claude:** `IncidentEventType` enum: CREATED, CLASSIFIED, PRIORITY_CHANGED, ASSIGNED, ASSIGNMENT_FAILED, ACKNOWLEDGED, INVESTIGATION_STARTED, INFO_REQUESTED, INFO_RECEIVED, RESOLVED, REOPENED, VERIFIED, CLOSED, CANCELLED, MARKED_DUPLICATE, SLA_WARNING, SLA_VIOLATED, ESCALATED. `record IncidentEvent(IncidentEventType type, Incident incident, User actor /*null = system*/, IncidentStatus previous /*null on creation*/, IncidentStatus current, String description, Instant at, List<Long> explicitRecipientIds /*empty = use default rules*/)`. `IncidentObserver` interface with `void onEvent(IncidentEvent)`. `IncidentEventPublisher` takes `List<IncidentObserver>` by constructor injection (Spring orders them by `@Order`) and calls each one in order, synchronously. An exception from an observer propagates, except that notification code must never throw (see 3.4).
   *Done when:* a test registers two fake observers and checks both are called in `@Order` order.
