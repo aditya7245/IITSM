@@ -56,13 +56,13 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 19 of 53 (all of Phase 1 and Phase 2, plus 3.1).
+**Checklist items done:** 20 of 53 (all of Phase 1 and Phase 2, plus 3.1 and 3.2).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
-| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1 |
+| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1, 3.2 |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
@@ -204,7 +204,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `IncidentEventType` enum: CREATED, CLASSIFIED, PRIORITY_CHANGED, ASSIGNED, ASSIGNMENT_FAILED, ACKNOWLEDGED, INVESTIGATION_STARTED, INFO_REQUESTED, INFO_RECEIVED, RESOLVED, REOPENED, VERIFIED, CLOSED, CANCELLED, MARKED_DUPLICATE, SLA_WARNING, SLA_VIOLATED, ESCALATED. `record IncidentEvent(IncidentEventType type, Incident incident, User actor /*null = system*/, IncidentStatus previous /*null on creation*/, IncidentStatus current, String description, Instant at, List<Long> explicitRecipientIds /*empty = use default rules*/)`. `IncidentObserver` interface with `void onEvent(IncidentEvent)`. `IncidentEventPublisher` takes `List<IncidentObserver>` by constructor injection (Spring orders them by `@Order`) and calls each one in order, synchronously. An exception from an observer propagates, except that notification code must never throw (see 3.4).
   *Done when:* a test registers two fake observers and checks both are called in `@Order` order.
 
-- [ ] **3.2 Audit observer and history.** *Status: not started.*
+- [x] **3.2 Audit observer and history.** *Status: done.*
   **In plain words:** Every event is written to a permanent history log, so we can always see who did what and when. It cannot be edited afterwards.
   **Details for Claude:** `AuditObserver` (`@Order(1)`) writes one `AuditLog` row per event: incident, actor (null for system), `action` = event type name, previous and new status names, description. It runs inside the caller's transaction, so a failed audit write rolls back the business change. `AuditService.history(Long incidentId)` returns rows ordered by `createdAt`, then `id`.
   *Done when:* an integration test publishes an event and reads it back, and a second test shows a JDBC `UPDATE audit_logs ...` fails (the database trigger).
