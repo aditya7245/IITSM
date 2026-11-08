@@ -56,13 +56,13 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 21 of 53 (all of Phase 1 and Phase 2, plus 3.1 to 3.3).
+**Checklist items done:** 22 of 53 (all of Phases 1, 2 and 3).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
-| 3 Events, audit, notifications | 3.1 to 3.4 | 3.1 to 3.3 |
+| 3 Events, audit, notifications | 3.1 to 3.4 | all |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
@@ -214,7 +214,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `enum ChannelType { IN_APP, EMAIL }`. `record NotificationMessage(User recipient, Incident incident, IncidentEventType type, String text)`. `NotificationChannel` interface: `ChannelType type()`, `void send(NotificationMessage)`. `InAppChannel` saves a `Notification` row. `EmailChannel` uses `JavaMailSender`, sender from `iitsm.mail.from`, subject `[INC1001] <short event title>`, plain-text body, and catches and logs (warn) any mail exception instead of throwing. `NotificationChannelFactory.get(ChannelType)` builds its map from the injected `List<NotificationChannel>` and throws `IllegalArgumentException` for a missing type.
   *Done when:* tests cover the factory, the in-app save, and the email channel with a mocked `JavaMailSender` including the failure path.
 
-- [ ] **3.4 Notification rules and observer.** *Status: not started.*
+- [x] **3.4 Notification rules and observer.** *Status: done.*
   **In plain words:** Decides who gets told about which event, and sends it in the background after the change is safely saved, so a mail problem can never break an incident update.
   **Details for Claude:** `NotificationService.notify(IncidentEvent)` applies this fixed table (recipients, then channels). If `explicitRecipientIds` is non-empty, those users replace the default recipients.
 
