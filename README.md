@@ -56,14 +56,14 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 22 of 53 (all of Phases 1, 2 and 3).
+**Checklist items done:** 23 of 53 (all of Phases 1, 2 and 3, plus 4.1).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
-| 4 Services | 4.1 to 4.10 | none |
+| 4 Services | 4.1 to 4.10 | 4.1 |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
@@ -243,7 +243,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 ### Phase 4: Services (putting the pieces together)
 
-- [ ] **4.1 Current user and access policy.** *Status: not started.*
+- [x] **4.1 Current user and access policy.** *Status: done.*
   **In plain words:** Who is allowed to do what. An employee sees only their own incidents, a technician only theirs, admins everything.
   **Details for Claude:** `CurrentUserService.requireUser()` loads the `User` for the logged-in `UserPrincipal` id. `IncidentAccessPolicy` with `require...` methods throwing `UnauthorizedOperationException`, implementing exactly:
 
