@@ -56,14 +56,14 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 23 of 53 (all of Phases 1, 2 and 3, plus 4.1).
+**Checklist items done:** 24 of 53 (all of Phases 1, 2 and 3, plus 4.1 and 4.2).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
-| 4 Services | 4.1 to 4.10 | 4.1 |
+| 4 Services | 4.1 to 4.10 | 4.1, 4.2 |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
@@ -258,7 +258,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
   *Done when:* a unit test checks every cell of this table with one allowed and one denied user.
 
-- [ ] **4.2 Incident factory (Factory pattern).** *Status: not started.*
+- [x] **4.2 Incident factory (Factory pattern).** *Status: done.*
   **In plain words:** One place that turns a submitted report form into a valid new incident, rejecting bad input.
   **Details for Claude:** `CreateIncidentCommand(String title, String description, Long categoryId, Long serviceId, short impact, short urgency, int affectedUsers)`. `IncidentFactory.create(command, reporter)`: loads the service (missing or inactive -> `ServiceNotFoundException`), loads the category (missing or inactive -> `InvalidInputException`), validates (title 1 to 200 characters, description non-blank, impact and urgency 1 to 3, affectedUsers at least 1), takes the number from `IncidentNumberGenerator`, and sets `createdAt = clock.instant()`. Returns an unsaved NEW incident. **The category is required at creation**; the suggest-category feature only helps the user choose it.
   *Done when:* tests cover the valid case and each validation failure.
