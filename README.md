@@ -56,12 +56,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 17 of 53 (all of Phase 1, plus 2.1 to 2.7).
+**Checklist items done:** 18 of 53 (all of Phase 1 and Phase 2).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
-| 2 Pure business rules | 2.1 to 2.8 | 2.1 to 2.7 |
+| 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | none |
 | 4 Services | 4.1 to 4.10 | none |
 | 5 REST API | 5.1 to 5.7 | none |
@@ -192,7 +192,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `SimilarityStrategy` interface (`double similarity(String a, String b)`) and `JaccardSimilarityStrategy`: |tokens(a) intersect tokens(b)| / |union|, and 0 if both sets are empty.
   *Done when:* tests cover identical text (1.0), disjoint text (0.0), a known partial overlap, and empty input.
 
-- [ ] **2.8 Assignment strategies (Strategy pattern, intelligent feature 2).** *Status: not started.*
+- [x] **2.8 Assignment strategies (Strategy pattern, intelligent feature 2).** *Status: done.*
   **In plain words:** Three interchangeable ways to pick a technician: best skill match, least busy, or take turns. The admin can switch between them without changing code.
   **Details for Claude:** `record TechnicianCandidate(Technician technician, int activeIncidents, int proficiency)` (proficiency is the technician's level in the category's required skill, 0 if they lack it or the category has none). `AssignmentStrategy`: `String name()`, `List<TechnicianCandidate> rank(List<TechnicianCandidate> eligible, boolean skillRequired)` (best first), and a default no-op `void recordAssigned(Technician t)`. Names: `SKILL_BASED`, `LOAD_BASED`, `ROUND_ROBIN`. `SkillBasedStrategy`: if `skillRequired`, drop candidates with proficiency 0; order by proficiency desc, then activeIncidents asc, then experienceYears desc, then id asc. `LoadBasedStrategy`: activeIncidents asc, then experienceYears desc, then id asc. `RoundRobinStrategy`: order by id, rotated to start after the id last passed to `recordAssigned` (initially start at the lowest id); the last id is kept in memory. An empty result means nobody is suitable; there is no fallback between strategies.
   *Done when:* tests cover each ordering rule and tie-breaker, the empty result when nobody has the skill, and round-robin wrapping around.
