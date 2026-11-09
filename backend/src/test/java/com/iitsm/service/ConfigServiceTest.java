@@ -50,6 +50,17 @@ class ConfigServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void booleanSettingsAreReadCaseInsensitivelyWithADefaultForBadOrMissingValues() {
+        assertFalse(config.getBoolean(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, true));   // seeded by migration V5 as "false"
+        config.set("demo.flag", " TRUE ");
+        assertTrue(config.getBoolean("demo.flag", false));
+        config.set("demo.flag", "maybe");
+        assertTrue(config.getBoolean("demo.flag", true));
+        assertFalse(config.getBoolean("demo.flag", false));
+        assertTrue(config.getBoolean("no.such.key", true));
+    }
+
+    @Test
     void blankKeyOrValueIsRejected() {
         assertThrows(InvalidInputException.class, () -> config.set(" ", "v"));
         assertThrows(InvalidInputException.class, () -> config.set("k", " "));

@@ -56,6 +56,23 @@ public class ConfigService {
         }
     }
 
+    /** "true" or "false" in any capitalization; anything else (or a missing setting) gives the default. */
+    @Transactional(readOnly = true)
+    public boolean getBoolean(String key, boolean defaultValue) {
+        String value = getString(key, null);
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value.trim().equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (value.trim().equalsIgnoreCase("false")) {
+            return false;
+        }
+        log.warn("Setting '{}' is not true or false ('{}'); using default {}", key, value, defaultValue);
+        return defaultValue;
+    }
+
     /** Changes a setting, creating it if it does not exist yet. */
     @Transactional
     public void set(String key, String value) {

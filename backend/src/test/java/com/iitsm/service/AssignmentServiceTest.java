@@ -20,16 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Uses the seeded technicians:
- * lead.app (team lead, 8 years, max 5): Application Support 5, Authentication 4
  * tech1 (4 years, max 5): Application Support 5, Database 3
  * tech2 (2 years, max 5): Networking 4, Cloud 3
  * tech3 (6 years, max 3): Database 5, Application Support 2
+ * lead.app (team lead, 8 years, max 5): Application Support 5, Authentication 4. Left out of automatic
+ * assignment unless the setting is on or the incident is escalated.
  * Rolls back after each test.
  */
 @Transactional
@@ -97,39 +97,37 @@ class AssignmentServiceTest extends AbstractIntegrationTest {
     // ---------- skill based (the default) ----------
 
     @Test
-    void skillBasedRanksByProficiencyThenExperienceAndDropsTechniciansWithoutTheSkill() {
-        // Application Support: lead 5, tech1 5, tech3 2, tech2 none. lead and tech1 tie, so more experience (lead, 8 years) wins.
-        assertEquals(List.of("lead.app@iitsm.local", "tech1@iitsm.local", "tech3@iitsm.local"),
+    void skillBasedRanksByProficiencyAndDropsTechniciansWithoutTheSkill() {
+        // Application Support: tech1 5, tech3 2, tech2 none (dropped). The team lead is not considered.
+        assertEquals(List.of("tech1@iitsm.local", "tech3@iitsm.local"),
                 emails(assignment.recommend(applicationIncident, 10)));
-        assertEquals("lead.app@iitsm.local", firstChoice());
+        assertEquals("tech1@iitsm.local", firstChoice());
     }
 
     @Test
     void recommendRespectsTheLimit() {
-        assertEquals(List.of("lead.app@iitsm.local", "tech1@iitsm.local"),
-                emails(assignment.recommend(applicationIncident, 2)));
+        assertEquals(List.of("tech1@iitsm.local"), emails(assignment.recommend(applicationIncident, 1)));
         assertThrows(InvalidInputException.class, () -> assignment.recommend(applicationIncident, 0));
     }
 
     @Test
     void aTechnicianAtTheirWorkloadLimitIsSkippedButOneBelowItIsNot() {
-        giveWorkload(lead, 4);                       // max is 5: still eligible, but busier than tech1
-        assertEquals("tech1@iitsm.local", firstChoice());   // equal skill, fewer active incidents wins
-        assertTrue(emails(assignment.recommend(applicationIncident, 10)).contains("lead.app@iitsm.local"));
+        giveWorkload(tech1, 4);                      // max is 5: still eligible, and skill beats load
+        assertEquals("tech1@iitsm.local", firstChoice());
 
-        giveWorkload(tech1, 5);                      // tech1 is now full
-        assertFalse(emails(assignment.recommend(applicationIncident, 10)).contains("tech1@iitsm.local"));
+        giveWorkload(tech1, 1);                      // 5 of 5: full
+        assertEquals(List.of("tech3@iitsm.local"), emails(assignment.recommend(applicationIncident, 10)));
     }
 
     @Test
     void anUnavailableOrInactiveTechnicianIsSkipped() {
-        lead.setAvailable(false);
-        technicians.saveAndFlush(lead);
-        assertEquals("tech1@iitsm.local", firstChoice());
-
-        tech1.deactivate();
+        tech1.setAvailable(false);
         technicians.saveAndFlush(tech1);
         assertEquals("tech3@iitsm.local", firstChoice());
+
+        tech3.deactivate();
+        technicians.saveAndFlush(tech3);
+        assertTrue(assignment.autoAssign(applicationIncident).isEmpty());   // the lead is left out, tech2 lacks the skill
     }
 
     @Test
@@ -147,15 +145,51 @@ class AssignmentServiceTest extends AbstractIntegrationTest {
         assertTrue(assignment.recommend(storage, 3).isEmpty());
     }
 
+    // ---------- team leads ----------
+
+    @Test
+    void teamLeadsAreNotAssignedAutomaticallyByDefault() {
+        assertFalse(emails(assignment.recommend(applicationIncident, 10)).contains("lead.app@iitsm.local"));
+
+        config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "LOAD_BASED");
+        assertFalse(emails(assignment.recommend(applicationIncident, 10)).contains("lead.app@iitsm.local"));
+    }
+
+    @Test
+    void turningTheSettingOnMakesTeamLeadsEligibleLikeTechnicians() {
+        config.set(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, "true");
+        // lead and tech1 both have skill 5; the lead has more experience (8 years against 4)
+        assertEquals(List.of("lead.app@iitsm.local", "tech1@iitsm.local", "tech3@iitsm.local"),
+                emails(assignment.recommend(applicationIncident, 10)));
+        assertEquals("lead.app@iitsm.local", firstChoice());
+    }
+
+    @Test
+    void anEscalatedIncidentCanBeOfferedToTheTeamLead() {
+        applicationIncident.incrementEscalationLevel();
+        assertEquals("lead.app@iitsm.local", emails(assignment.recommend(applicationIncident, 10)).get(0));
+    }
+
+    @Test
+    void anAdminCanAlwaysAssignATeamLeadByHand() {
+        assertEquals("lead.app@iitsm.local", assignment.assignManually(applicationIncident, lead.getId()).getEmail());
+    }
+
+    @Test
+    void aTeamLeadAtTheirLimitCannotBeAssignedByHandEither() {
+        giveWorkload(lead, 5);
+        assertThrows(WorkloadExceededException.class, () -> assignment.assignManually(applicationIncident, lead.getId()));
+    }
+
     // ---------- other strategies, chosen from the settings ----------
 
     @Test
     void loadBasedIgnoresSkillsAndPicksTheLeastBusyThenTheMostExperienced() {
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "LOAD_BASED");
-        assertEquals("lead.app@iitsm.local", firstChoice());      // nobody busy: most experienced (8 years)
+        assertEquals("tech3@iitsm.local", firstChoice());         // nobody busy: most experienced (6 years)
 
-        giveWorkload(lead, 1);
-        assertEquals("tech3@iitsm.local", firstChoice());         // now tech3 (6 years)
+        giveWorkload(tech3, 1);
+        assertEquals("tech1@iitsm.local", firstChoice());         // now tech1 (4 years)
 
         // load-based ignores skills, so the networking specialist is a candidate too
         assertTrue(emails(assignment.recommend(applicationIncident, 10)).contains("tech2@iitsm.local"));
@@ -172,28 +206,29 @@ class AssignmentServiceTest extends AbstractIntegrationTest {
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "ROUND_ROBIN");
 
         List<String> picks = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 6; i++) {
             picks.add(firstChoice());
         }
-        // four eligible technicians: the first four picks are all different and the next four repeat them in the same order
-        assertEquals(4, picks.subList(0, 4).stream().distinct().count());
-        assertEquals(picks.subList(0, 4), picks.subList(4, 8));
+        // three eligible technicians: the first three picks are all different and the next three repeat them in order
+        assertEquals(3, picks.subList(0, 3).stream().distinct().count());
+        assertEquals(picks.subList(0, 3), picks.subList(3, 6));
+        assertFalse(picks.contains("lead.app@iitsm.local"));
     }
 
     @Test
     void recommendingNeverAdvancesTheRoundRobin() {
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "ROUND_ROBIN");
-        List<String> first = emails(assignment.recommend(applicationIncident, 4));
-        List<String> second = emails(assignment.recommend(applicationIncident, 4));
+        List<String> first = emails(assignment.recommend(applicationIncident, 3));
+        List<String> second = emails(assignment.recommend(applicationIncident, 3));
         assertEquals(first, second);
     }
 
     @Test
     void anUnknownStrategyNameFallsBackToSkillBased() {
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "NOT_A_STRATEGY");
-        assertEquals("lead.app@iitsm.local", firstChoice());
+        assertEquals("tech1@iitsm.local", firstChoice());
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, "  load_based ");   // names are trimmed and case-insensitive
-        assertEquals("lead.app@iitsm.local", firstChoice());
+        assertEquals("tech3@iitsm.local", firstChoice());
     }
 
     // ---------- the incident is never changed ----------

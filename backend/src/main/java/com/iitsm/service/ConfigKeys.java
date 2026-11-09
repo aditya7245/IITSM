@@ -7,6 +7,7 @@ public final class ConfigKeys {
     public static final String DUPLICATE_THRESHOLD = "duplicate.threshold";
     public static final String DUPLICATE_WINDOW_HOURS = "duplicate.window.hours";
     public static final String PRIORITY_BUMP_USERS = "priority.bump.users";
+    public static final String AUTO_ASSIGN_TEAM_LEADS = "assignment.auto.team.leads";
 
     private ConfigKeys() { }
 }

@@ -265,7 +265,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 - [x] **4.3 Assignment service.** *Status: done.*
   **In plain words:** Finds the right technician using whichever strategy the admin selected, skipping people who are unavailable or already full.
-  **Details for Claude:** `AssignmentService`: `Optional<Technician> autoAssign(Incident)`, `List<Technician> recommend(Incident, int limit)`, `Technician assignManually(Incident, Long technicianId)`. Strategy is chosen by name from `ConfigService` key `assignment.strategy` (unknown name: log a warning and use `SKILL_BASED`). Eligible candidates are all technicians (team leads included) that are active and available and whose `countByAssigneeIdAndStatusIn(id, workload statuses) < maxWorkload`; `skillRequired` is true when the category has a required skill. After a successful auto-assignment call `strategy.recordAssigned`. `assignManually` throws `TechnicianUnavailableException` if the technician is inactive or unavailable and `WorkloadExceededException` if at capacity. Neither method changes the incident; the caller does that.
+  **Details for Claude:** `AssignmentService`: `Optional<Technician> autoAssign(Incident)`, `List<Technician> recommend(Incident, int limit)`, `Technician assignManually(Incident, Long technicianId)`. Strategy is chosen by name from `ConfigService` key `assignment.strategy` (unknown name: log a warning and use `SKILL_BASED`). Eligible candidates are technicians that are active and available and whose `countByAssigneeIdAndStatusIn(id, workload statuses) < maxWorkload`; `skillRequired` is true when the category has a required skill. Team leads are left out of `autoAssign` and `recommend` unless the setting `assignment.auto.team.leads` is true or the incident's `escalationLevel` is above 0; `assignManually` always accepts a team lead. After a successful auto-assignment call `strategy.recordAssigned`. `assignManually` throws `TechnicianUnavailableException` if the technician is inactive or unavailable and `WorkloadExceededException` if at capacity. Neither method changes the incident; the caller does that.
   *Done when:* integration tests with the seeded technicians cover each strategy, a full technician being skipped, no eligible technician returning empty, and both manual-assignment exceptions.
 
 - [ ] **4.4 Duplicate detection service (intelligent feature 3).** *Status: not started.*
@@ -388,7 +388,7 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
 
 - [ ] **7.6 Admin configuration pages.** *Status: not started.*
   **In plain words:** Screens to manage users, teams, technicians' skills, services, categories, SLA times and the assignment strategy.
-  **Details for Claude:** Users (create, edit, deactivate), teams and leads, technicians (workload, availability, skills with proficiency), services, categories (with keywords), SLA policies, and the assignment-strategy switch.
+  **Details for Claude:** Users (create, edit, deactivate), teams and leads, technicians (workload, availability, skills with proficiency), services, categories (with keywords), SLA policies, and the assignment settings (the strategy switch and the team-lead switch).
   *Done when:* creating a category with keywords makes it appear in the report form and the suggestion.
 
 - [ ] **7.7 Dashboard.** *Status: not started.*
@@ -426,7 +426,7 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
 2. **Category is required when reporting.** The suggestion is a helper, not an automatic fill.
 3. **Escalation notifies and records; it does not reassign the incident.** Level 1 is the assignee's team lead, level 2 the administrators, level 3 the IT managers.
 4. **Skill-based assignment has no fallback.** If nobody has the skill, the incident stays CLASSIFIED and admins are notified (ASSIGNMENT_FAILED).
-5. **Team leads are assignable like technicians.** Reassignment after acknowledgement is out of scope.
+5. **Team leads are NOT assigned automatically by default** (setting `assignment.auto.team.leads`, seeded `false` by migration V5). They are offered in the recommendations of an escalated incident, and an admin can always assign one by hand. Reassignment after acknowledgement is out of scope.
 6. **SLA clock starts at the incident's creation time** and pauses only in PENDING_INFO.
 7. **Duplicate similarity threshold lowered from 0.5 to 0.3** (migration V4). Short titles rarely reach 0.5 even for the same problem. Tune it in `system_config` if the demo data needs it.
 8. **Frontend is JavaScript, not TypeScript**, to reduce setup cost for a first project.

@@ -4,6 +4,7 @@ import com.iitsm.domain.catalog.Skill;
 import com.iitsm.domain.catalog.TechnicianSkill;
 import com.iitsm.domain.incident.Incident;
 import com.iitsm.domain.incident.IncidentStatus;
+import com.iitsm.domain.user.Role;
 import com.iitsm.domain.user.Technician;
 import com.iitsm.exception.InvalidInputException;
 import com.iitsm.exception.TechnicianUnavailableException;
@@ -31,6 +32,10 @@ import java.util.stream.Collectors;
  * Finds the right technician for an incident. It works out who is eligible (active, available, under their
  * workload limit), then lets the strategy chosen by the admin rank them. It never changes the incident:
  * the caller decides what to do with the answer.
+ * <p>
+ * Team leads are left out of automatic assignment and of the recommendations, unless the admin turned on the
+ * setting {@code assignment.auto.team.leads} or the incident has been escalated (a lead is then a sensible choice).
+ * An admin can always assign a team lead by hand with {@link #assignManually}.
  */
 @Service
 public class AssignmentService {
@@ -107,12 +112,18 @@ public class AssignmentService {
     private List<TechnicianCandidate> rank(Incident incident, AssignmentStrategy strategy) {
         Skill requiredSkill = incident.getCategory() == null ? null : incident.getCategory().getRequiredSkill();
         Long requiredSkillId = requiredSkill == null ? null : requiredSkill.getId();
-        return strategy.rank(candidates(requiredSkillId), requiredSkillId != null);
+        return strategy.rank(candidates(requiredSkillId, teamLeadsAllowed(incident)), requiredSkillId != null);
+    }
+
+    private boolean teamLeadsAllowed(Incident incident) {
+        return incident.getEscalationLevel() > 0 || config.getBoolean(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, false);
     }
 
     /** Everyone who may take work, with their current workload and their level in the required skill. */
-    private List<TechnicianCandidate> candidates(Long requiredSkillId) {
-        List<Technician> available = technicians.findByActiveTrueAndAvailableTrue();
+    private List<TechnicianCandidate> candidates(Long requiredSkillId, boolean includeTeamLeads) {
+        List<Technician> available = technicians.findByActiveTrueAndAvailableTrue().stream()
+                .filter(technician -> includeTeamLeads || technician.getRole() != Role.TEAM_LEAD)
+                .toList();
 
         Map<Long, Short> proficiencyByTechnician = Map.of();
         if (requiredSkillId != null && !available.isEmpty()) {
