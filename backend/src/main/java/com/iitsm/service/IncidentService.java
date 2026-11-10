@@ -297,7 +297,7 @@ public class IncidentService {
     }
 
     /** Keeps free text short enough for a notification line (they are limited to 500 characters). */
-    private static String shorten(String text) {
+    static String shorten(String text) {
         String oneLine = text.strip().replaceAll("\\s+", " ");
         return oneLine.length() <= MAX_TEXT_IN_EVENT ? oneLine : oneLine.substring(0, MAX_TEXT_IN_EVENT - 3) + "...";
     }
