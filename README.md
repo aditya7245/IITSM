@@ -56,14 +56,14 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 27 of 53 (all of Phases 1, 2 and 3, plus 4.1 to 4.5).
+**Checklist items done:** 28 of 53 (all of Phases 1, 2 and 3, plus 4.1 to 4.6).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
-| 4 Services | 4.1 to 4.10 | 4.1 to 4.5 |
+| 4 Services | 4.1 to 4.10 | 4.1 to 4.6 |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
@@ -278,7 +278,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `IncidentService.create(command, actor)` in one transaction, returning `CreateIncidentResult(Incident incident, List<DuplicateCandidate> possibleDuplicates)`. Order: factory; save; publish CREATED (previous null, current NEW); priority via 2.1 (criticality from the service, bump threshold from `priority.bump.users`); policy via 1.7; deadlines via 2.3 starting at the incident's `createdAt`; `classify(...)`; save; publish CLASSIFIED; duplicate detection; `autoAssign` and, if a technician is found, `assignTo` and publish ASSIGNED, otherwise publish ASSIGNMENT_FAILED and leave the incident CLASSIFIED.
   *Done when:* integration test of demo workflow 1: a payment-outage incident from the seeded employee gets P1, SLA deadlines of 5 and 30 minutes from creation, an assignee chosen by the skill-based strategy, and audit rows for CREATED, CLASSIFIED and ASSIGNED.
 
-- [ ] **4.6 Lifecycle operations.** *Status: not started.*
+- [x] **4.6 Lifecycle operations.** *Status: done.*
   **In plain words:** All the actions people take after creation: acknowledge, start, resolve, verify, reopen, cancel, close, mark duplicate, reassign, change priority. Each checks who is allowed, applies the change and announces the event.
   **Details for Claude:** Methods on `IncidentService`, each: load (missing -> `IncidentNotFoundException`), check `IncidentAccessPolicy`, call the 2.4 method, save, publish the matching event with previous and current status: `acknowledge`, `startProgress`, `resolve(id, text, actor)`, `verify`, `reopen(id, reason, actor)`, `cancel`, `close(id, actor)` (admin; VERIFIED -> CLOSED), `markDuplicate(id, originalId, actor)`, `reassign(id, technicianId, actor)` (only while CLASSIFIED or ASSIGNED, uses `assignManually`), `changePriority(id, Priority, actor)` (admin; recomputes deadlines with `pausedSeconds` and publishes PRIORITY_CHANGED). Reassignment after acknowledgement is out of scope.
   *Done when:* one integration test per operation, plus: an invalid transition returns the 409 mapping, a wrong actor is rejected, and the technician's active workload count drops when an incident becomes RESOLVED.
