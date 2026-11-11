@@ -56,7 +56,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 32 of 53 (all of Phases 1, 2, 3 and 4).
+**Checklist items done:** 34 of 53 (all of Phases 1, 2, 3 and 4, plus 5.1 and 5.2).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -64,7 +64,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
 | 4 Services | 4.1 to 4.10 | all |
-| 5 REST API | 5.1 to 5.7 | none |
+| 5 REST API | 5.1 to 5.7 | 5.1 to 5.2 |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
 | 8 Innovation and documents | 8.1 to 8.4 | none |
@@ -305,12 +305,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 ### Phase 5: REST API (what the frontend will call)
 
-- [ ] **5.1 DTOs and mappers.** *Status: not started.*
+- [x] **5.1 DTOs and mappers.** *Status: done.*
   **In plain words:** Clean, simple data shapes for what the API sends and receives, so internal database objects never leak out.
   **Details for Claude:** Records in `dto/`: `IncidentSummaryResponse` and `IncidentDetailResponse` (ids and names for reporter, assignee, service, category; priority, status, slaStatus, deadlines, resolution, `duplicateOfNumber`), `CreateIncidentRequest` (Jakarta validation annotations mirroring 4.2), `CreateIncidentResponse` (detail plus `possibleDuplicates`), `CommentResponse`, `AuditResponse`, `NotificationResponse`, `FeedbackResponse`, `PageResponse<T>(content, page, size, totalElements, totalPages)`. A mapper component converts entities to DTOs. Timestamps serialize as ISO-8601 strings.
   *Done when:* mapper unit tests pass and no controller signature mentions an entity.
 
-- [ ] **5.2 Incident endpoints.** *Status: not started.*
+- [x] **5.2 Incident endpoints.** *Status: done.*
   **In plain words:** The web addresses for reporting and working on incidents.
   **Details for Claude:** `IncidentController` under `/api/incidents`: `POST /` (201, any authenticated user); `GET /{id}`; `POST /suggest-category` (body title and description, returns top 3 with scores); `POST /{id}/acknowledge`, `/start`, `/resolve` (body `resolution`), `/verify`, `/reopen` (body `reason`), `/cancel`; admin only (`@PreAuthorize("hasRole('ADMIN')")`): `POST /{id}/close`, `/duplicate` (body `originalId`), `/reassign` (body `technicianId`), `/priority` (body `priority`), `GET /{id}/recommendations` (top 3 technicians); `GET /{id}/comments` and `POST /{id}/comments` (body `type`, `body`, routed to 4.7 by type); `POST /{id}/feedback`, `GET /{id}/feedback`; `GET /{id}/history`. Ownership is enforced by the service layer, role by annotations.
   *Done when:* MockMvc tests with real JWTs for employee, technician and admin cover 200/201, 400 (validation), 401 (no token), 403 (wrong role or not the owner), 404 and 409 for representative endpoints.

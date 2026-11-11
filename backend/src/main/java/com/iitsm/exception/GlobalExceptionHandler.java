@@ -6,11 +6,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -33,6 +38,34 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors().forEach(f -> fields.put(f.getField(), f.getDefaultMessage()));
         ApiError body = new ApiError(Instant.now(), 400, "Bad Request", "Validation failed", req.getRequestURI(), fields);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    /** Malformed JSON, an unknown enum value, or a number where text was sent. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", "Malformed or unreadable request body", req.getRequestURI()));
+    }
+
+    /** A value in the URL that has the wrong type, such as /api/incidents/abc. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", "Invalid value for '" + ex.getName() + "'", req.getRequestURI()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException ex, HttpServletRequest req) {
+        return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", "Missing parameter '" + ex.getParameterName() + "'", req.getRequestURI()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ApiError> handleWrongMethod(HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
+        return ResponseEntity.status(405).body(ApiError.of(405, "Method Not Allowed", "Method " + ex.getMethod() + " is not supported here", req.getRequestURI()));
+    }
+
+    /** A URL that matches nothing. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    ResponseEntity<ApiError> handleNoSuchUrl(NoResourceFoundException ex, HttpServletRequest req) {
+        return ResponseEntity.status(404).body(ApiError.of(404, "Not Found", "No such resource", req.getRequestURI()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
