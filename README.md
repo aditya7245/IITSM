@@ -56,14 +56,14 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 31 of 53 (all of Phases 1, 2 and 3, plus 4.1 to 4.9).
+**Checklist items done:** 32 of 53 (all of Phases 1, 2, 3 and 4).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
-| 4 Services | 4.1 to 4.10 | 4.1 to 4.9 |
+| 4 Services | 4.1 to 4.10 | all |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
@@ -298,7 +298,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `SlaMonitorService.runOnce()` (public, uses `Clock`): for every open incident that has a priority, evaluate with 2.3; if the result is more severe than the stored `slaStatus`, call `raiseSlaStatus`, save, and publish SLA_WARNING (AT_RISK) or SLA_VIOLATED (VIOLATED) **once per change**. Each incident is processed in its own try/catch so one failure does not stop the run. A separate `SlaMonitorScheduler` class calls `runOnce()` with `@Scheduled(fixedDelayString = "${iitsm.sla.monitor-interval-ms}")` (a separate class avoids Spring's self-invocation problem with transactions).
   *Done when:* an integration test using `MutableClock` shows ON_TRACK, then AT_RISK after advancing to 80%, then VIOLATED after the deadline, with exactly one event each and none on repeat runs.
 
-- [ ] **4.10 Auto-escalation (intelligent feature 4).** *Status: not started.*
+- [x] **4.10 Auto-escalation (intelligent feature 4).** *Status: done.*
   **In plain words:** If a critical (P1) incident is not acknowledged in time, the system alerts the next person up the chain, then the next. Smart feature number four.
   **Details for Claude:** `EscalationService.runOnce()`: candidates are P1 incidents in status ASSIGNED (not acknowledged) with `escalationLevel < 3`. With `n = escalationLevel + 1`, escalate when `now >= responseDeadline + (n - 1) x levelTimeoutMinutes x 60 / timeScale` seconds. Targets: level 1 = the team lead of the assignee's team (if the team has none, all exact ADMINISTRATOR users); level 2 = all exact ADMINISTRATOR users; level 3 = all IT_MANAGER users. It calls `incrementEscalationLevel()`, saves, and publishes ESCALATED with `explicitRecipientIds` set to the targets and a description naming the level. It does **not** reassign the incident. At most one level per incident per run. An `EscalationScheduler` calls it on the same interval as 4.9.
   *Done when:* an integration test with `MutableClock` shows level 1 at the response deadline, level 2 one timeout later, level 3 one more later, and nothing after acknowledgement.
