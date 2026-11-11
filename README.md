@@ -56,14 +56,14 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 29 of 53 (all of Phases 1, 2 and 3, plus 4.1 to 4.7).
+**Checklist items done:** 30 of 53 (all of Phases 1, 2 and 3, plus 4.1 to 4.8).
 
 | Phase | Items | Done |
 |---|---|---|
 | 1 Foundations | 1.1 to 1.10 | all |
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
-| 4 Services | 4.1 to 4.10 | 4.1 to 4.7 |
+| 4 Services | 4.1 to 4.10 | 4.1 to 4.8 |
 | 5 REST API | 5.1 to 5.7 | none |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
@@ -288,7 +288,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `addNote(id, body, actor)`, `requestInfo(id, body, actor)` (assignee; saves an INFO_REQUEST comment, moves IN_PROGRESS -> PENDING_INFO via `requestInfo(now)`, publishes INFO_REQUESTED), `respondToInfo(id, body, actor)` (reporter; saves an INFO_RESPONSE comment; if the incident is PENDING_INFO it calls `receiveInfo(now)` and publishes INFO_RECEIVED; in any other open state it only saves the comment; on a closed incident it throws `InvalidStateTransitionException`), and `listComments(id, actor)`: the reporter sees INFO_REQUEST and INFO_RESPONSE only, staff see all types.
   *Done when:* an integration test covers workflow 2's middle section: the SLA clock pauses and the deadlines move later by the pause length after the reply.
 
-- [ ] **4.8 Feedback and automatic close.** *Status: not started.*
+- [x] **4.8 Feedback and automatic close.** *Status: done.*
   **In plain words:** After the user confirms the fix, they rate it, and the incident closes by itself.
   **Details for Claude:** `submitFeedback(id, rating 1 to 5, comments, actor)`: reporter only, incident must be VERIFIED, one feedback per incident (a second one throws `InvalidInputException`). After saving, the system closes the incident (`close(now)`, actor null) and publishes CLOSED.
   *Done when:* tests cover the happy path, wrong status, second submission, rating 0 and 6.
