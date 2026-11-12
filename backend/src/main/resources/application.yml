@@ -7,6 +7,10 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:iitsm}
     username: ${POSTGRES_USER:iitsm}
     password: ${POSTGRES_PASSWORD:iitsm}
+  data:
+    web:
+      pageable:
+        max-page-size: 100        # a list never returns more than 100 rows per page, whatever size is asked for
   jpa:
     open-in-view: false
     hibernate:
