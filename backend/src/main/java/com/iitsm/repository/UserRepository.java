@@ -1,6 +1,8 @@
 package com.iitsm.repository;
 
 import com.iitsm.domain.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("select u from User u where type(u) = :type")
     List<User> findAllByExactType(@Param("type") Class<? extends User> type);
+
+    /** One page of the users of exactly this class (see {@link #findAllByExactType}). */
+    @Query("select u from User u where type(u) = :type")
+    Page<User> findPageByExactType(@Param("type") Class<? extends User> type, Pageable pageable);
 }

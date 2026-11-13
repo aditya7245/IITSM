@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -72,6 +74,20 @@ public abstract class AbstractApiTest extends AbstractIntegrationTest {
 
     protected ResultActions postAs(String name, String url, String json) throws Exception {
         return send(name, post(url).contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    protected ResultActions putAs(String name, String url, String json) throws Exception {
+        return send(name, put(url).contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    protected ResultActions deleteAs(String name, String url) throws Exception {
+        return send(name, delete(url));
+    }
+
+    /** Logs in with an email and password (no token needed); the caller checks the status. */
+    protected ResultActions loginWith(String email, String password) throws Exception {
+        return send(null, post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\": \"%s\", \"password\": \"%s\"}".formatted(email, password)));
     }
 
     /** The response body as text. */

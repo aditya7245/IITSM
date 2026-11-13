@@ -11,7 +11,13 @@ import com.iitsm.domain.incident.IncidentStatus;
 import com.iitsm.domain.incident.Priority;
 import com.iitsm.domain.incident.SlaStatus;
 import com.iitsm.domain.notification.Notification;
+import com.iitsm.domain.catalog.Skill;
+import com.iitsm.domain.catalog.TechnicianSkill;
+import com.iitsm.domain.sla.SlaPolicy;
+import com.iitsm.domain.user.Administrator;
 import com.iitsm.domain.user.Employee;
+import com.iitsm.domain.user.ITManager;
+import com.iitsm.domain.user.TeamLead;
 import com.iitsm.domain.user.Team;
 import com.iitsm.domain.user.Technician;
 import com.iitsm.service.CategoryScore;
@@ -333,5 +339,132 @@ class ResponseMapperTest {
         assertTrue(response.content().isEmpty());
         assertEquals(0, response.totalElements());
         assertEquals(0, response.totalPages());
+    }
+
+    // ---------- users, teams and the catalog ----------
+
+    @Test
+    void anEmployeeResponseHasTheDepartmentAndNoTechnicianFields() {
+        UserResponse response = mapper.toUser(reporter);
+
+        assertEquals(1L, response.id());
+        assertEquals("emp1@iitsm.local", response.email());
+        assertEquals("Emma Employee", response.fullName());
+        assertEquals(com.iitsm.domain.user.Role.EMPLOYEE, response.role());
+        assertTrue(response.active());
+        assertEquals("Finance", response.department());
+        assertNull(response.team());
+        assertNull(response.maxWorkload());
+        assertNull(response.available());
+        assertNull(response.experienceYears());
+    }
+
+    @Test
+    void aTechnicianResponseHasTeamLimitAvailabilityAndExperienceButNoDepartment() {
+        tech.setAvailable(false);
+
+        UserResponse response = mapper.toUser(tech);
+
+        assertEquals(com.iitsm.domain.user.Role.TECHNICIAN, response.role());
+        assertNull(response.department());
+        assertEquals("Application Support", response.team().name());
+        assertEquals(5, response.maxWorkload());
+        assertEquals(false, response.available());
+        assertEquals(4, response.experienceYears());
+    }
+
+    @Test
+    void aTeamLeadResponseIsATechnicianResponseWithTheTeamLeadRole() {
+        Team team = new Team("Infrastructure");
+        TeamLead lead = set(new TeamLead("lead@iitsm.local", "h", "Lena Lead", team, 6, 9), "id", 20L);
+
+        UserResponse response = mapper.toUser(lead);
+
+        assertEquals(com.iitsm.domain.user.Role.TEAM_LEAD, response.role());
+        assertEquals("Infrastructure", response.team().name());
+        assertEquals(6, response.maxWorkload());
+        assertEquals(9, response.experienceYears());
+    }
+
+    @Test
+    void administratorsHaveNoKindSpecificFields() {
+        Administrator admin = set(new Administrator("admin@iitsm.local", "h", "Ada Admin"), "id", 30L);
+        ITManager manager = set(new ITManager("manager@iitsm.local", "h", "Max Manager"), "id", 31L);
+
+        for (UserResponse response : List.of(mapper.toUser(admin), mapper.toUser(manager))) {
+            assertNull(response.department());
+            assertNull(response.team());
+            assertNull(response.maxWorkload());
+            assertNull(response.available());
+            assertNull(response.experienceYears());
+        }
+        assertEquals(com.iitsm.domain.user.Role.ADMINISTRATOR, mapper.toUser(admin).role());
+        assertEquals(com.iitsm.domain.user.Role.IT_MANAGER, mapper.toUser(manager).role());
+    }
+
+    @Test
+    void aDeactivatedUserIsShownAsInactive() {
+        reporter.deactivate();
+
+        assertFalse(mapper.toUser(reporter).active());
+    }
+
+    @Test
+    void aTechnicianWithoutATeamHasANullTeamInTheUserResponse() {
+        Technician loner = set(new Technician("t@iitsm.local", "h", "Lone Tech", null, 3, 1), "id", 8L);
+
+        UserResponse response = mapper.toUser(loner);
+
+        assertNull(response.team());
+        assertEquals(3, response.maxWorkload());
+    }
+
+    @Test
+    void aTeamShowsItsLeadOrNullWhenThereIsNone() {
+        Team team = set(new Team("Infrastructure"), "id", 4L);
+        assertEquals(new TeamResponse(4L, "Infrastructure", null), mapper.toTeam(team));
+
+        TeamLead lead = set(new TeamLead("lead@iitsm.local", "h", "Lena Lead", team, 5, 8), "id", 20L);
+        team.assignLead(lead);
+
+        assertEquals(new TeamResponse(4L, "Infrastructure", new NamedReference(20L, "Lena Lead")), mapper.toTeam(team));
+    }
+
+    @Test
+    void aSkillAndATechniciansSkillCarryTheNameAndProficiency() {
+        Skill networking = set(new Skill("Networking"), "id", 6L);
+
+        assertEquals(new SkillResponse(6L, "Networking"), mapper.toSkill(networking));
+        assertEquals(new TechnicianSkillResponse(6L, "Networking", 4),
+                mapper.toTechnicianSkill(new TechnicianSkill(3L, 6L, (short) 4), networking));
+    }
+
+    @Test
+    void aServiceCarriesItsCriticalityAndWhetherItIsActive() {
+        payment.deactivate();
+
+        assertEquals(new ServiceResponse(7L, "Payment Application", "Payments", 5, false), mapper.toService(payment));
+    }
+
+    @Test
+    void aCategoryShowsItsRequiredSkillOrNullWhenNoneIsNeeded() {
+        assertNull(mapper.toCategory(application).requiredSkill());
+        assertEquals("payment,billing", mapper.toCategory(application).keywords());
+        assertTrue(mapper.toCategory(application).active());
+
+        Skill networking = set(new Skill("Networking"), "id", 6L);
+        Category network = set(new Category("Network", "Connectivity", "wifi", networking), "id", 12L);
+
+        assertEquals(new NamedReference(6L, "Networking"), mapper.toCategory(network).requiredSkill());
+    }
+
+    @Test
+    void aPolicyShowsItsServiceOrNullForTheDefault() {
+        SlaPolicy override = set(new SlaPolicy(Priority.P1, payment, 2, 10), "id", 50L);
+        SlaPolicy standard = set(new SlaPolicy(Priority.P2, null, 15, 120), "id", 51L);
+
+        assertEquals(new SlaPolicyResponse(50L, Priority.P1, new NamedReference(7L, "Payment Application"), 2, 10),
+                mapper.toSlaPolicy(override));
+        assertEquals(new SlaPolicyResponse(51L, Priority.P2, null, 15, 120), mapper.toSlaPolicy(standard));
     }
 }

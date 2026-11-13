@@ -40,4 +40,16 @@ public class ITService {
     public String getDescription() { return description; }
     public short getBusinessCriticality() { return businessCriticality; }
     public boolean isActive() { return active; }
+
+    public void update(String name, String description, short businessCriticality) {
+        if (businessCriticality < 1 || businessCriticality > 5) {
+            throw new InvalidInputException("Business criticality must be between 1 and 5");
+        }
+        this.name = name;
+        this.description = description;
+        this.businessCriticality = businessCriticality;
+    }
+
+    public void activate() { this.active = true; }
+    public void deactivate() { this.active = false; }
 }

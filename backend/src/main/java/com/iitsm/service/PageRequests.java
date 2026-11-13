@@ -42,6 +42,11 @@ final class PageRequests {
         return PageRequest.of(requested.getPageNumber(), requested.getPageSize(), sort.and(Sort.by(tieBreak, "id")));
     }
 
+    /** Same page and size, but always in the given order; any sort in the request is ignored. */
+    static Pageable ordered(Pageable requested, Sort sort) {
+        return PageRequest.of(requested.getPageNumber(), requested.getPageSize(), sort);
+    }
+
     /** Same page and size, but always newest first; any sort in the request is ignored. */
     static Pageable newestFirst(Pageable requested) {
         return PageRequest.of(requested.getPageNumber(), requested.getPageSize(),

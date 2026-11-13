@@ -18,4 +18,6 @@ public class Employee extends User {
 
     @Override public Role getRole() { return Role.EMPLOYEE; }
     public String getDepartment() { return department; }
+
+    public void changeDepartment(String department) { this.department = department; }
 }

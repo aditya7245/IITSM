@@ -51,4 +51,13 @@ public class SlaPolicy {
     public ITService getService() { return service; }
     public int getResponseMinutes() { return responseMinutes; }
     public int getResolutionMinutes() { return resolutionMinutes; }
+
+    /** Changes the times. The priority and the service are what identify a policy, so they stay. */
+    public void changeMinutes(int responseMinutes, int resolutionMinutes) {
+        if (responseMinutes <= 0 || resolutionMinutes <= 0) {
+            throw new InvalidInputException("SLA minutes must be greater than 0");
+        }
+        this.responseMinutes = responseMinutes;
+        this.resolutionMinutes = resolutionMinutes;
+    }
 }

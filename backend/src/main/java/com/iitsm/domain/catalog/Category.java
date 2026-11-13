@@ -45,4 +45,14 @@ public class Category {
     public String getKeywords() { return keywords; }
     public Skill getRequiredSkill() { return requiredSkill; }
     public boolean isActive() { return active; }
+
+    public void update(String name, String description, String keywords, Skill requiredSkill) {
+        this.name = name;
+        this.description = description;
+        this.keywords = keywords == null ? "" : keywords;
+        this.requiredSkill = requiredSkill;
+    }
+
+    public void activate() { this.active = true; }
+    public void deactivate() { this.active = false; }
 }

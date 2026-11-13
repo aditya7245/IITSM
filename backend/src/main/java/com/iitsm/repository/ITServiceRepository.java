@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface ITServiceRepository extends JpaRepository<ITService, Long> {
     List<ITService> findByActiveTrue();
     Optional<ITService> findByName(String name);
+
+    Optional<ITService> findByNameIgnoreCase(String name);
 }

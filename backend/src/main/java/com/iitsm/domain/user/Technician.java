@@ -1,5 +1,6 @@
 package com.iitsm.domain.user;
 
+import com.iitsm.exception.InvalidInputException;
 import com.iitsm.exception.WorkloadExceededException;
 import jakarta.persistence.*;
 
@@ -37,6 +38,23 @@ public class Technician extends User {
     public int getExperienceYears() { return experienceYears; }
 
     public void setAvailable(boolean available) { this.available = available; }
+
+    public void changeMaxWorkload(int maxWorkload) {
+        if (maxWorkload < 1) {
+            throw new InvalidInputException("Maximum workload must be at least 1");
+        }
+        this.maxWorkload = maxWorkload;
+    }
+
+    public void changeExperienceYears(int experienceYears) {
+        if (experienceYears < 0) {
+            throw new InvalidInputException("Experience cannot be negative");
+        }
+        this.experienceYears = experienceYears;
+    }
+
+    /** Moves the technician to another team, or out of any team when {@code team} is null. */
+    public void moveToTeam(Team team) { this.team = team; }
 
     public boolean hasCapacity(int activeIncidents) {
         return available && activeIncidents < maxWorkload;

@@ -3,15 +3,20 @@ package com.iitsm.dto;
 import com.iitsm.domain.audit.AuditLog;
 import com.iitsm.domain.catalog.Category;
 import com.iitsm.domain.catalog.ITService;
+import com.iitsm.domain.catalog.Skill;
+import com.iitsm.domain.catalog.TechnicianSkill;
 import com.iitsm.domain.incident.Feedback;
 import com.iitsm.domain.incident.Incident;
 import com.iitsm.domain.incident.IncidentComment;
 import com.iitsm.domain.notification.Notification;
+import com.iitsm.domain.sla.SlaPolicy;
+import com.iitsm.domain.user.Employee;
 import com.iitsm.domain.user.Team;
 import com.iitsm.domain.user.Technician;
 import com.iitsm.domain.user.User;
 import com.iitsm.service.CategoryScore;
 import com.iitsm.service.CreateIncidentResult;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -79,6 +84,61 @@ public class ResponseMapper {
 
     public CategorySuggestionResponse toSuggestion(CategoryScore score) {
         return new CategorySuggestionResponse(score.category().getId(), score.category().getName(), score.hits());
+    }
+
+    // ------------------------------------------------------------------ users, teams and the catalog
+
+    /**
+     * A user with the fields of their kind. The user may be a lazy stand-in for the real object (which would not be
+     * recognised as an employee or technician), so the real one is looked up first.
+     */
+    public UserResponse toUser(User user) {
+        Object real = Hibernate.unproxy(user);
+        String department = null;
+        NamedReference team = null;
+        Integer maxWorkload = null;
+        Boolean available = null;
+        Integer experienceYears = null;
+        if (real instanceof Employee employee) {
+            department = employee.getDepartment();
+        } else if (real instanceof Technician technician) {
+            Team technicianTeam = technician.getTeam();
+            team = technicianTeam == null ? null : new NamedReference(technicianTeam.getId(), technicianTeam.getName());
+            maxWorkload = technician.getMaxWorkload();
+            available = technician.isAvailable();
+            experienceYears = technician.getExperienceYears();
+        }
+        return new UserResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.isActive(),
+                department, team, maxWorkload, available, experienceYears);
+    }
+
+    public TeamResponse toTeam(Team team) {
+        return new TeamResponse(team.getId(), team.getName(), ref(team.getLead()));
+    }
+
+    public SkillResponse toSkill(Skill skill) {
+        return new SkillResponse(skill.getId(), skill.getName());
+    }
+
+    public TechnicianSkillResponse toTechnicianSkill(TechnicianSkill link, Skill skill) {
+        return new TechnicianSkillResponse(skill.getId(), skill.getName(), link.getProficiency());
+    }
+
+    public ServiceResponse toService(ITService service) {
+        return new ServiceResponse(service.getId(), service.getName(), service.getDescription(),
+                service.getBusinessCriticality(), service.isActive());
+    }
+
+    public CategoryResponse toCategory(Category category) {
+        Skill skill = category.getRequiredSkill();
+        return new CategoryResponse(category.getId(), category.getName(), category.getDescription(),
+                category.getKeywords(), skill == null ? null : new NamedReference(skill.getId(), skill.getName()),
+                category.isActive());
+    }
+
+    public SlaPolicyResponse toSlaPolicy(SlaPolicy policy) {
+        return new SlaPolicyResponse(policy.getId(), policy.getPriority(), ref(policy.getService()),
+                policy.getResponseMinutes(), policy.getResolutionMinutes());
     }
 
     // ------------------------------------------------------------------ references
