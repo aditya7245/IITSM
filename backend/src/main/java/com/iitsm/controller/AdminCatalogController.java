@@ -2,6 +2,7 @@ package com.iitsm.controller;
 
 import com.iitsm.dto.AdminRequests;
 import com.iitsm.dto.AssignmentStrategyResponse;
+import com.iitsm.dto.TeamLeadAssignmentResponse;
 import com.iitsm.dto.CategoryResponse;
 import com.iitsm.dto.ServiceResponse;
 import com.iitsm.dto.SlaPolicyResponse;
@@ -111,5 +112,18 @@ public class AdminCatalogController {
     @PutMapping("/config/assignment-strategy")
     public AssignmentStrategyResponse setAssignmentStrategy(@Valid @RequestBody AdminRequests.AssignmentStrategy request) {
         return catalog.setAssignmentStrategy(request.strategy());
+    }
+
+    // ------------------------------------------------------------------ team leads in automatic assignment
+
+    @GetMapping("/config/team-lead-assignment")
+    public TeamLeadAssignmentResponse teamLeadAssignment() {
+        return catalog.teamLeadAssignment();
+    }
+
+    /** {@code enabled} true lets team leads be assigned new incidents automatically, false keeps them free for escalations. */
+    @PutMapping("/config/team-lead-assignment")
+    public TeamLeadAssignmentResponse setTeamLeadAssignment(@Valid @RequestBody AdminRequests.TeamLeadAssignment request) {
+        return catalog.setTeamLeadAssignment(request.enabled());
     }
 }

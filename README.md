@@ -56,7 +56,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 42 of 53 (all of Phases 1 to 6).
+**Checklist items done:** 49 of 53 (all of Phases 1 to 7).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -66,7 +66,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 4 Services | 4.1 to 4.10 | all |
 | 5 REST API | 5.1 to 5.7 | all |
 | 6 Demo and tests | 6.1 to 6.3 | all |
-| 7 Frontend | 7.1 to 7.7 | none |
+| 7 Frontend | 7.1 to 7.7 | all |
 | 8 Innovation and documents | 8.1 to 8.4 | none |
 
 ### Rules for every item
@@ -361,37 +361,37 @@ Everything left to build, in dependency order: **every item only depends on item
 
 Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-dom` v6, `axios`, `recharts`, plain CSS (no UI framework). API base URL from `VITE_API_URL` (default `http://localhost:8080`). The token is stored in `localStorage` under `iitsm_token`. Role groups: employee = EMPLOYEE; technician = TECHNICIAN or TEAM_LEAD; admin = ADMINISTRATOR or IT_MANAGER. Impact and urgency selects show Low, Medium, High (sent as 1, 2, 3).
 
-- [ ] **7.1 Scaffold, API client and auth.** *Status: not started.*
+- [x] **7.1 Scaffold, API client and auth.** *Status: done.*
   **In plain words:** Create the React app, and make login, registration and role-based redirects work.
   **Details for Claude:** Vite project; axios instance that attaches the token and, on a 401, clears it and goes to `/login`; `AuthContext` (login, register, logout, current user from `/api/auth/me`); Login and Register pages; `ProtectedRoute` with a required-role-group prop.
   *Done when:* each demo user can log in and is redirected to its role's home route.
 
-- [ ] **7.2 App shell and notifications.** *Status: not started.*
+- [x] **7.2 App shell and notifications.** *Status: done.*
   **In plain words:** The page frame with a menu per role and a notification bell.
   **Details for Claude:** Layout with navigation per role group, a notification bell polling `/api/notifications/unread-count` every 15 seconds, a dropdown listing notifications with mark-read and mark-all-read.
   *Done when:* an incident event produces a visible unread badge within one poll.
 
-- [ ] **7.3 Employee pages.** *Status: not started.*
+- [x] **7.3 Employee pages.** *Status: done.*
   **In plain words:** Everything an employee does: report a problem, see their incidents, answer questions, confirm the fix, rate it.
   **Details for Claude:** Report-incident form (service and category dropdowns from the read-only endpoints; a "suggest category" action calling `/suggest-category`; impact, urgency, affected users); after submit a panel showing `possibleDuplicates`. My-incidents list with the status filter. Incident detail: details, info-request thread with a reply box, history timeline, Verify and Reopen buttons when RESOLVED, a feedback form when VERIFIED, Cancel when allowed.
   *Done when:* workflow 1 and the employee half of workflow 2 can be done entirely in the UI.
 
-- [ ] **7.4 Technician pages.** *Status: not started.*
+- [x] **7.4 Technician pages.** *Status: done.*
   **In plain words:** Everything a technician does: see assigned incidents and workload, investigate, ask for info, resolve.
   **Details for Claude:** Assigned-incidents list, workload card (`active / max`), availability toggle, incident detail with Acknowledge, Start, Request info, Add note and Resolve actions shown only in the statuses where they are valid.
   *Done when:* the technician half of workflow 2 can be done in the UI.
 
-- [ ] **7.5 Admin incident pages.** *Status: not started.*
+- [x] **7.5 Admin incident pages.** *Status: done.*
   **In plain words:** Admins search all incidents with every filter, step in (reassign, change priority, mark duplicate, close) and browse the audit log.
   **Details for Claude:** Incident search page with every filter from 5.3 and pagination; admin detail view adding Reassign (showing the recommendations list), Change priority, Mark duplicate and Close; audit log page with the 5.4 filters.
   *Done when:* every filter changes the results and every admin action works.
 
-- [ ] **7.6 Admin configuration pages.** *Status: not started.*
+- [x] **7.6 Admin configuration pages.** *Status: done.*
   **In plain words:** Screens to manage users, teams, technicians' skills, services, categories, SLA times and the assignment strategy.
   **Details for Claude:** Users (create, edit, deactivate), teams and leads, technicians (workload, availability, skills with proficiency), services, categories (with keywords), SLA policies, and the assignment settings (the strategy switch and the team-lead switch).
   *Done when:* creating a category with keywords makes it appear in the report form and the suggestion.
 
-- [ ] **7.7 Dashboard.** *Status: not started.*
+- [x] **7.7 Dashboard.** *Status: done.*
   **In plain words:** Charts and numbers for managers.
   **Details for Claude:** Overview cards plus Recharts charts for technician workload, service analysis, priority distribution, SLA compliance and incidents per day.
   *Done when:* numbers match the report endpoints.

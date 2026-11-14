@@ -6,6 +6,7 @@ import com.iitsm.domain.catalog.Skill;
 import com.iitsm.domain.sla.SlaPolicy;
 import com.iitsm.dto.AdminRequests;
 import com.iitsm.dto.AssignmentStrategyResponse;
+import com.iitsm.dto.TeamLeadAssignmentResponse;
 import com.iitsm.dto.CategoryResponse;
 import com.iitsm.dto.ResponseMapper;
 import com.iitsm.dto.ServiceResponse;
@@ -213,6 +214,19 @@ public class CatalogFacade {
         }
         config.set(ConfigKeys.ASSIGNMENT_STRATEGY, strategy);
         return new AssignmentStrategyResponse(strategy, names);
+    }
+
+    // ------------------------------------------------------------------ team leads in automatic assignment
+
+    @Transactional(readOnly = true)
+    public TeamLeadAssignmentResponse teamLeadAssignment() {
+        return new TeamLeadAssignmentResponse(config.getBoolean(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, false));
+    }
+
+    /** Switches on or off that team leads are given new incidents automatically. It applies from the next assignment. */
+    public TeamLeadAssignmentResponse setTeamLeadAssignment(boolean enabled) {
+        config.set(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, Boolean.toString(enabled));
+        return new TeamLeadAssignmentResponse(enabled);
     }
 
     // ------------------------------------------------------------------ helpers

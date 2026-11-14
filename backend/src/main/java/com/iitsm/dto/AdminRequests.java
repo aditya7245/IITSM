@@ -81,4 +81,6 @@ public final class AdminRequests {
             @NotNull @Min(1) Integer resolutionMinutes) { }
 
     public record AssignmentStrategy(@NotBlank String strategy) { }
+
+    public record TeamLeadAssignment(@NotNull Boolean enabled) { }
 }
