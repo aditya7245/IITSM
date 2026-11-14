@@ -1,0 +1,8 @@
+# Demo mode: makes deadlines and escalations happen in seconds so they can be shown in a recorded demo.
+# Start with:  SPRING_PROFILES_ACTIVE=dev,demo   (dev is still needed for the demo users and services).
+iitsm:
+  sla:
+    time-scale: 20            # a 30 minute window lasts 90 seconds
+    monitor-interval-ms: 5000 # the SLA monitor and the escalation check run every 5 seconds
+  escalation:
+    level-timeout-minutes: 1  # with the time scale, the next escalation level follows 3 seconds later
