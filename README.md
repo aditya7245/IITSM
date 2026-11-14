@@ -2,60 +2,84 @@
 
 CS F213 OOP course project (due 22 Nov 2026). Employees report IT incidents; the system prioritizes them, assigns a technician, tracks SLA deadlines, sends notifications and keeps an audit trail.
 
-**Stack:** Java 21 · Spring Boot 3.3 (layered monolith) · PostgreSQL 16 · Flyway · Spring Data JPA · Spring Security + JWT · React 18 + Vite
+**Stack:** Java 21 · Spring Boot 3.3 (layered monolith) · PostgreSQL 16 · Flyway · Spring Data JPA · Spring Security + JWT · React 18 + Vite (JavaScript)
 
-**Contents:** [1. How to run everything](#1-how-to-run-everything) · [2. Build checklist](#2-build-checklist) · [3. Scaffold guide](#3-scaffold-guide-what-is-in-the-repo)
+**Contents:** [1. How to run everything](#1-how-to-run-everything) · [2. Build checklist](#2-build-checklist) · [3. Code guide](#3-code-guide-how-the-project-is-built)
 
 ---
 
 # 1. How to run everything
 
-**Needs:** Java 21, Maven, Docker Desktop (running), Node.js 18 or newer, Git.
+**Needs:** Java 21 or newer, Maven, Node.js 18 or newer, Docker Desktop (running), Git.
+
+**One click (Windows):** double-click `start-iitsm.bat` in the repo root. It starts Docker (Postgres and Mailpit), the backend and the frontend, waits until they answer and opens the app. `start-iitsm-demo.bat` does the same in demo mode (see below), and `stop-iitsm.bat` stops everything. The first start is slow (Maven and npm download packages). If something else already uses port 8080 or 5173, stop it first. **Known quirk:** the frontend window sometimes opens but does not start the app by itself. If the browser cannot open http://localhost:5173, click into the "I-ITSM frontend" window and type `npm run dev`.
+
+**By hand** (three steps):
 
 ```bash
 git clone https://github.com/aditya7245/IITSM.git
 cd IITSM
-docker compose up -d                  # Postgres + Mailpit
+docker compose up -d --wait          # Postgres + Mailpit, waits until the database is ready
+
 cd backend
-mvn spring-boot:run                   # API on http://localhost:8080
-```
+mvn spring-boot:run                  # API on http://localhost:8080
 
-In a second terminal, start the web app:
-
-```bash
+# in a second terminal, from the repo root
 cd frontend
-npm install                           # first time only
-npm run dev                           # app on http://localhost:5173
+npm install                          # first time only
+npm run dev                          # app on http://localhost:5173
 ```
-
-Open http://localhost:5173 and log in with a demo user (the login page has one-click buttons for them in development). The app talks to `http://localhost:8080`; to point it elsewhere, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_URL`. Keep port 5173: it is the origin the backend allows (`CORS_ORIGINS`).
 
 | What | URL |
 |---|---|
-| Web app | http://localhost:5173 |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
+| The app (log in here) | http://localhost:5173 |
+| Swagger UI (try the API) | http://localhost:8080/swagger-ui.html |
 | Health | http://localhost:8080/actuator/health |
 | Mailpit (caught emails) | http://localhost:8025 |
 
-**Check it works** (PowerShell):
+**Demo users** (dev profile, password `Password@123`, all `@iitsm.local`):
+
+| Email | Who | Role |
+|---|---|---|
+| `emp1@`, `emp2@` | Asha, Ravi | employee |
+| `tech1@`, `tech2@`, `tech3@` | Kiran, Sana, Dev | technician |
+| `lead.app@` | Meera | team lead (Application Support) |
+| `admin@` | System Admin | administrator |
+| `manager@` | IT Manager | IT manager |
+
+**Check the API works** (PowerShell):
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/login -ContentType "application/json" -Body '{"email":"admin@iitsm.local","password":"Password@123"}'
 ```
 
-You should get a `token` back. Demo users (dev profile, password `Password@123`): `admin@`, `manager@`, `lead.app@`, `tech1@`, `tech2@`, `tech3@`, `emp1@`, `emp2@` + `iitsm.local`.
+You should get a `token` back. In Swagger UI, click **Authorize**, paste the token (without the word Bearer) and every request sends it.
 
-**Run tests** (Docker must be running): `cd backend && mvn verify`
+**Demo mode** makes SLA deadlines and escalations happen in seconds (time scale 20, checks every 5 seconds). Start the backend with the profiles `dev,demo`:
 
-**Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database)
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE = "dev,demo"
+mvn spring-boot:run
+```
+
+The three demo workflows to follow are in [`docs/demo-script.md`](docs/demo-script.md). The test cases are catalogued in [`docs/TEST_CASES.md`](docs/TEST_CASES.md).
+
+**Run tests** (Docker must be running): `cd backend && mvn clean verify`. To check that the frontend compiles: `cd frontend && npm run build`.
+
+**Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database, so the next start has fresh demo data and incident numbers start again at INC1001).
 
 **If something breaks**
 
 | Problem | Fix |
 |---|---|
 | Test error "Could not find a valid Docker environment" | Start Docker Desktop. If it still fails, run once: `"api.version=1.44" \| Out-File -Encoding ascii "$HOME\.docker-java.properties"` |
-| "Connection refused" to the database | Run `docker compose up -d` and wait a few seconds |
-| Flyway "checksum mismatch" | A migration was edited. Don't edit V1 to V3; add a new `V<n>` file. Locally: `docker compose down -v` and restart |
+| "Connection refused" to the database | Run `docker compose up -d --wait` and wait a few seconds |
+| Flyway "checksum mismatch" | A migration was edited. Never edit an applied migration (V1 to V5); add a new `V<n>` file. Locally: `docker compose down -v` and restart |
+| The backend, the health check or the email tests are very slow | A VPN or DNS tool (for example Cloudflare WARP) can slow down connections to Mailpit. Turn it off while running the demo or the tests |
+| The app says "Cannot reach the server" | The backend is not running, or `VITE_API_URL` points to the wrong address (default `http://localhost:8080`; copy `frontend/.env.example` to `frontend/.env` to change it) |
+| Swagger answers 401 | Log in through `POST /api/auth/login`, then use **Authorize** and paste the token |
+| Port 8080 or 5173 already in use | Run `stop-iitsm.bat`, or stop the other program using the port |
 
 ---
 
@@ -67,7 +91,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 51 of 53 (Phases 1 to 7, plus 8.2 and 8.3).
+**Checklist items done:** 49 of 53 (all of Phases 1 to 7).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -78,7 +102,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 5 REST API | 5.1 to 5.7 | all |
 | 6 Demo and tests | 6.1 to 6.3 | all |
 | 7 Frontend | 7.1 to 7.7 | all |
-| 8 Innovation and documents | 8.1 to 8.4 | 8.2, 8.3 done; 8.4 in progress; 8.1 not started |
+| 8 Innovation and documents | 8.1 to 8.4 | none |
 
 ### Rules for every item
 
@@ -95,7 +119,7 @@ Everything left to build, in dependency order: **every item only depends on item
 4. **Time:** inject `java.time.Clock` (item 1.3). Business code never calls `Instant.now()`.
 5. **Errors:** throw subclasses of `IitsmException` (add new ones in `exception/` with an HTTP status). Controllers return DTO records, never entities.
 6. **Tests:** every item ships tests and `mvn verify` must pass. Pure-logic items use plain JUnit 5 (no Spring). Database items extend `AbstractIntegrationTest` (item 1.3).
-7. **Migrations:** never edit V1 to V3. The only planned new migration is V4 (item 1.4); any other schema change is V5, V6, and so on, and whoever adds it checks the repo for the next free number first.
+7. **Migrations:** never edit an applied migration (V1 to V5). Any new schema change is V6 or higher, and whoever adds it checks the repo for the next free number first.
 8. **Git:** one branch per item (`feature/<id>-<name>`), pull request into `main`, `mvn verify` green before pushing.
 9. **Terminology:** *open* = status is not CLOSED, CANCELLED or DUPLICATE. *Active workload* = status is ASSIGNED, ACKNOWLEDGED, IN_PROGRESS or PENDING_INFO. *Admin* = role ADMINISTRATOR or IT_MANAGER. *Staff* = technician (including team lead) or admin.
 
@@ -343,12 +367,12 @@ Everything left to build, in dependency order: **every item only depends on item
 
 - [x] **5.6 Configuration administration.** *Status: done.*
   **In plain words:** Admin screens' backend: manage IT services, categories, SLA times and which assignment strategy is active.
-  **Details for Claude:** Admin CRUD under `/api/admin`: `services`, `categories` (deactivate by `active=false`, never delete), `sla-policies` (a duplicate priority and service pair -> 409). `GET/PUT /api/admin/config/assignment-strategy` (body `strategy`, must be one of the three names, else 400). Read-only `GET /api/services` and `GET /api/categories` (active only) for any authenticated user, used by the report form.
+  **Details for Claude:** Admin CRUD under `/api/admin`: `services`, `categories` (deactivate by `active=false`, never delete), `sla-policies` (a duplicate priority and service pair -> 409). `GET/PUT /api/admin/config/assignment-strategy` (body `strategy`, must be one of the three names, else 400) and `GET/PUT /api/admin/config/team-lead-assignment` (body `enabled`, true or false) for the team-lead switch. Read-only `GET /api/services` and `GET /api/categories` (active only) for any authenticated user, used by the report form.
   *Done when:* tests cover each endpoint's happy path, validation, and that switching the strategy changes the next auto-assignment.
 
 - [x] **5.7 Reports (admin only).** *Status: done.*
   **In plain words:** The numbers for the dashboard: totals, who is busy, which services break most, SLA health, incidents per day.
-  **Details for Claude:** Under `/api/reports`: `overview` (`total`, `open`, `critical` = open P1, `resolved` = status RESOLVED, VERIFIED or CLOSED, `slaViolations` = slaStatus VIOLATED, `averageRating`); `technician-workload` (technician, active count, max); `service-analysis` (service, count); `category-distribution`; `priority-distribution`; `sla-compliance` (counts of each SlaStatus); `incidents-per-day?days=14` (zero-filled). Implemented as grouped JPQL queries.
+  **Details for Claude:** Under `/api/reports`: `overview` (`total`, `open`, `critical` = open P1, `resolved` = status RESOLVED, VERIFIED or CLOSED, `slaViolations` = slaStatus VIOLATED, `averageRating`); `technician-workload` (technician, active count, max); `service-analysis` (service, count); `category-distribution`; `priority-distribution`; `sla-compliance` (counts of each SlaStatus); `incidents-per-day?days=14` (zero-filled). Service and category counts are grouped JPQL queries; priority, SLA and workload numbers reuse simple repository counts (the workload equals the technician's own `/me/workload`); incidents per day are grouped in Java by UTC day (`days` 1 to 90, default 14).
   *Done when:* integration tests with known data assert exact numbers for each report.
 
 ### Phase 6: Demo and test suite
@@ -414,17 +438,17 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
   **Details for Claude:** `GET /api/stream` returning an `SseEmitter`. Browsers cannot set headers on `EventSource`, so this one endpoint also accepts the JWT as a `?token=` query parameter (validated by the existing `JwtService`). A new observer (`@Order(3)`) pushes `notification` events to the affected users and `incident-changed` events to connected admins. The frontend bell and dashboard refresh on these events and keep polling as a fallback.
   *Done when:* a status change appears in a second browser session without a reload.
 
-- [x] **8.2 Diagrams.** *Status: done. 13 PlantUML diagrams in `docs/diagrams/` (source `.puml` + PNG).*
+- [ ] **8.2 Diagrams.** *Status: not started.*
   **In plain words:** The architecture, use case, class and database diagrams the course requires.
   **Details for Claude:** In `docs/`: architecture diagram (frontend, REST API, controller, service, repository, PostgreSQL, SMTP/Mailpit, schedulers), use case diagram (actors: employee, technician, team lead, administrator, IT manager, and the system scheduler), class diagram (user hierarchy, incident with its state classes, strategy interfaces and implementations, observer interface and implementations, notification channels, factories), and an ER diagram generated from `V1__baseline_schema.sql`.
   *Done when:* diagrams are committed as image or Mermaid files and match the code.
 
-- [x] **8.3 Project report.** *Status: done. `docs/report/report.pdf` (LaTeX source `report.tex`; rebuild with `node make-tables.mjs` then `tectonic -X compile report.tex`).*
+- [ ] **8.3 Project report.** *Status: not started.*
   **In plain words:** The written report covering problem, design, technology choices, database, testing and security.
   **Details for Claude:** Sections required by the spec: problem analysis, requirements, architecture, UML, technology stack, database design with sample data, testing, security considerations (list what is not covered: refresh tokens, rate limiting, account lockout, `localStorage` token storage). The Technology Selection Report answers all nine questions from the spec, including how the system would scale (stateless JWT, read replicas, a message queue for notifications, a scheduler lock).
   *Done when:* every section of the spec's Deliverables list has a matching section.
 
-- [ ] **8.4 Demo video.** *Status: in progress.*
+- [ ] **8.4 Demo video.** *Status: not started.*
   **In plain words:** The recorded demo you submit.
   **Details for Claude:** 15 to 20 minutes, three workflows from `docs/demo-script.md`, every member introduces themselves and explains a module; file named per the spec; upload before 22 Nov 2026.
   *Done when:* uploaded and the link confirmed.
@@ -441,24 +465,20 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
 6. **SLA clock starts at the incident's creation time** and pauses only in PENDING_INFO.
 7. **Duplicate similarity threshold lowered from 0.5 to 0.3** (migration V4). Short titles rarely reach 0.5 even for the same problem. Tune it in `system_config` if the demo data needs it.
 8. **Frontend is JavaScript, not TypeScript**, to reduce setup cost for a first project.
-9. **The team-lead switch got its own endpoint** for item 7.6: `GET`/`PUT /api/admin/config/team-lead-assignment` with body `{"enabled": true}` (admins only). It reads and writes the `assignment.auto.team.leads` setting from V5; tests are in `AdminTeamLeadSettingApiTest`.
-10. **One incident page serves every role.** `/incidents/:id` shows only the actions the viewer may take in the incident's current status (reporter, assignee or admin), so the employee, technician and admin detail views of 7.3 to 7.5 are the same page.
+9. **Reports count every incident ever reported**, whatever its status, and days are UTC. Technicians with an active account are listed in the workload report, team leads included.
+10. **The team-lead switch has its own endpoint** (`/api/admin/config/team-lead-assignment`), added when the frontend's settings page needed it.
+11. **Mail never blocks the app:** `/actuator/health` does not check the mail server, SMTP timeouts are 20 seconds, and Mailpit does no reverse DNS lookup of the sender (`MP_SMTP_DISABLE_RDNS`).
 
 
 ---
 
-# 3. Scaffold guide (what is in the repo)
+# 3. Code guide (how the project is built)
 
-A plain-language tour of the starter code: what each part is, why it exists, and how the pieces fit together. A glossary is at the end.
+A plain-language tour of the code: what each part is, why it exists, and how the pieces fit together. A glossary is at the end.
 
 ## 3.1 The big picture
 
-The scaffold is the **foundation only**. It contains:
-
-- a PostgreSQL database with all tables already designed,
-- a Spring Boot backend that starts, connects to the database, and logs a user in,
-- the user class hierarchy (Employee, Technician, and so on),
-- the error-handling and security plumbing later features will use.
+I-ITSM is a **layered monolith**: one Spring Boot backend with a PostgreSQL database, and a React frontend that talks to it through a JSON REST API. Employees report incidents; the system scores and prioritises them, assigns a technician, tracks SLA deadlines in the background, escalates critical incidents nobody picks up, notifies people (in the app and by email) and keeps an append-only audit trail. Administrators manage users and settings and watch a dashboard.
 
 | Piece | Technology | What it does |
 |---|---|---|
@@ -468,48 +488,51 @@ The scaffold is the **foundation only**. It contains:
 | Schema management | Flyway | Creates and updates tables from SQL files |
 | Database access | Spring Data JPA (Hibernate) | Work with Java objects instead of writing all the SQL |
 | Security | Spring Security + JWT + BCrypt | Login, tokens, password hashing |
+| Frontend | React 18, Vite, React Router, Axios, Recharts (JavaScript) | The web interface and the dashboard charts |
 | Local email testing | Mailpit | Fake mail server that catches emails |
 | Containers | Docker Compose | Runs Postgres and Mailpit with one command |
 | API docs | springdoc (Swagger UI) | Auto-generated page to try the API |
-| Tests | JUnit 5 + Testcontainers | Tests against a real throwaway Postgres |
+| Tests | JUnit 5, Spring MockMvc, Testcontainers | Unit, API and workflow tests against a real throwaway Postgres |
 
 ## 3.2 Folder structure
 
 ```
 iitsm/
+├── start-iitsm.bat, start-iitsm-demo.bat, stop-iitsm.bat   One-click start and stop (Windows)
+├── run-frontend.bat          Used by the start script to run the frontend
 ├── docker-compose.yml        Postgres + Mailpit
 ├── .env.example              Template for local settings
-├── docs/                     report/ (PDF), diagrams/ (UML), screenshots/, TEST_CASES.md
-├── frontend/                 React app (Vite): src/pages per role, src/components, src/api
+├── docs/                     demo-script.md, TEST_CASES.md (diagrams and report come in Phase 8)
+├── frontend/                 React app (Vite)
+│   └── src/                  api/, auth/, components/, lib/, pages/ (admin, employee, technician)
 └── backend/
     ├── pom.xml               Maven dependencies and build config
     └── src/
         ├── main/
         │   ├── java/com/iitsm/
         │   │   ├── IitsmApplication.java
-        │   │   ├── config/  security/  controller/  service/
-        │   │   ├── repository/  dto/  observer/  strategy/  exception/
-        │   │   └── domain/  (common, user, incident, sla, notification, audit)
+        │   │   ├── config/  security/  controller/  service/  repository/  dto/
+        │   │   ├── observer/  strategy/  notification/  exception/  util/
+        │   │   └── domain/  (common, user, incident (+ state), sla, catalog, config, notification, audit)
         │   └── resources/
-        │       ├── application.yml, application-dev.yml, application-prod.yml
-        │       └── db/migration/ (V1, V2)   db/dev/ (V3, dev only)
-        └── test/java/com/iitsm/IitsmApplicationTests.java
+        │       ├── application.yml, application-dev.yml, application-prod.yml, application-demo.yml
+        │       └── db/migration/ (V1, V2, V4, V5)   db/dev/ (V3, dev only)
+        └── test/java/com/iitsm/   (mirrors the main packages, plus support/ and workflow/)
 ```
 
-Folders with only a `.gitkeep` are intentionally empty: they reserve the place where future code goes.
-
-| Package | Purpose | Contains today |
+| Package | Purpose | Examples |
 |---|---|---|
-| `controller` | Receives HTTP requests, returns responses. Almost no logic. | `AuthController` |
-| `service` | The business logic (the rules of the system). | `AuthService` |
-| `repository` | Reads and writes the database. | `UserRepository` |
-| `dto` | Simple shapes for what goes in and out of the API. | `LoginRequest`, `LoginResponse` |
-| `domain` | Core objects (users, incidents, ...) and their rules. | User hierarchy, `Team`, `BaseEntity`, `Role` |
-| `config` | Settings classes. | `SecurityConfig`, `SecurityProperties` |
-| `security` | Login and token machinery. | JWT service and filter, `UserPrincipal` |
-| `exception` | Custom errors and how they become HTTP responses. | Full exception set |
-| `observer` | (Empty) Observer pattern: audit and notification listeners. | nothing yet |
-| `strategy` | (Empty) Strategy pattern: assignment, priority, similarity. | nothing yet |
+| `controller` | Receives HTTP requests, returns responses. Almost no logic. | `IncidentController`, `AdminUserController`, `ReportController` |
+| `service` | The business logic, plus the `...Facade` classes controllers call. | `IncidentService`, `AssignmentService`, `SlaMonitorService`, `EscalationService`, `IncidentFacade` |
+| `repository` | Reads and writes the database. | `IncidentRepository`, `UserRepository`, `IncidentSpecifications` |
+| `dto` | The shapes that go in and out of the API, and `ResponseMapper`. | `IncidentDetailResponse`, `AdminRequests`, `PageResponse` |
+| `domain` | Core objects and their rules. | `Incident` and its state classes, `User` hierarchy, `SlaEvaluator`, `SlaPolicy` |
+| `strategy` | Strategy pattern: interchangeable algorithms. | Priority calculator, three assignment strategies, similarity |
+| `observer` | Observer pattern: reactions to incident events. | `IncidentEventPublisher`, `AuditObserver`, `NotificationObserver` |
+| `notification` | Who is told what, and how. | `NotificationRules`, `NotificationChannelFactory`, `EmailChannel`, `InAppChannel` |
+| `config`, `security` | Settings, security configuration and token machinery. | `SecurityConfig`, `JwtService`, `IncidentAccessPolicy` |
+| `exception` | Custom errors and how they become HTTP responses. | `IitsmException` and its subclasses, `GlobalExceptionHandler` |
+| `util` | Small helpers. | `TextTokenizer`, `Days` |
 
 ## 3.3 The layered architecture (the most important idea)
 
@@ -539,6 +562,8 @@ Each layer has one job, so you always know where code belongs:
 
 This is also what the course means by good object-oriented design: each class has a clear responsibility, and a part (like the assignment algorithm) can be swapped without touching unrelated code.
 
+**In this project** controllers rarely call several services themselves. They call a `...Facade` (for example `IncidentFacade`), a `@Transactional` class that uses the services and turns entities into DTOs with `ResponseMapper` before the transaction ends. This is needed because `spring.jpa.open-in-view` is off: lazy relations can only be read inside a transaction, so a controller must never touch them.
+
 ### Following one request: login
 
 1. The client sends `POST /api/auth/login` with email and password.
@@ -563,11 +588,13 @@ We never create or change tables by hand. We write numbered SQL files and **Flyw
 | `V1__baseline_schema.sql` | All environments | Creates every table |
 | `V2__reference_data.sql` | All environments | SLA defaults, categories, skills, config values |
 | `db/dev/V3__dev_seed_data.sql` | Dev only | Demo teams, users, services |
+| `V4__incident_number_sequence.sql` | All environments | The sequence behind incident numbers such as INC1001, and the lower duplicate threshold |
+| `V5__team_lead_assignment_setting.sql` | All environments | The `assignment.auto.team.leads` setting (off by default) |
 
 **Rules:**
 
-1. **Never edit a migration that has been committed and run.** Flyway stores a checksum; a changed file makes the app refuse to start on everyone else's machine. To change the schema, add a *new* file (`V4__something.sql`).
-2. Version numbers must be unique. If two people both create `V4`, one renames to `V5` before merging.
+1. **Never edit a migration that has been committed and run.** Flyway stores a checksum; a changed file makes the app refuse to start on everyone else's machine. To change the schema, add a *new* file (`V6__something.sql`).
+2. Version numbers must be unique. If two people both create `V6`, one renames to `V7` before merging.
 3. Hibernate runs with `ddl-auto: validate`: it only *checks* that Java classes match the tables and fails at startup if not. It never changes tables.
 
 ### The tables
@@ -667,6 +694,8 @@ Every entity extends `BaseEntity`, which provides an auto-generated `id` and aut
 | `CustomUserDetailsService` | Loads a user from the database for Spring Security |
 | `UserPrincipal` | An **adapter**: converts our `User` into the `UserDetails` Spring Security understands, so domain classes do not depend on Spring Security |
 | `SecurityProperties` | Typed settings from `application.yml` (secret, expiry, allowed origins) |
+| `CurrentUserService` | Gives services the logged-in user as a domain object |
+| `IncidentAccessPolicy` | Who may see or do what with an incident (reporter, assignee, admin) |
 
 **CORS:** browsers block a React app on port 5173 from calling an API on port 8080 unless the API allows it. We allow only the configured origin (`http://localhost:5173` by default).
 
@@ -677,43 +706,50 @@ Every entity extends `BaseEntity`, which provides an auto-generated `id` and aut
 public void configureSla(...) { ... }
 ```
 
-Role checks alone are not enough: an employee should only see their *own* incidents, so ownership checks will go in the service layer later.
+Role checks alone are not enough: an employee should only see their *own* incidents, so ownership checks live in `IncidentAccessPolicy` (used by the services). Role checks use `@PreAuthorize` on the controllers: for example every address under `/api/admin`, `/api/audit` and `/api/reports` needs an administrator, and an ADMIN here means the role ADMINISTRATOR or IT_MANAGER.
 
 ## 3.7 Configuration and profiles
 
-`${DB_HOST:localhost}` in `application.yml` means "use environment variable `DB_HOST` if set, otherwise `localhost`", so the same code runs on any machine.
+`${DB_HOST:localhost}` in `application.yml` means "use environment variable `DB_HOST` if set, otherwise `localhost`", so the same code runs on any machine. The variables you may want to set: `DB_HOST`, `DB_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `CORS_ORIGINS`, `MAIL_HOST`, `MAIL_PORT`.
 
 | Profile | File | Difference |
 |---|---|---|
 | `dev` (default) | `application-dev.yml` | Also loads `db/dev`, so demo users exist. More verbose logging |
+| `demo` (use together with `dev`) | `application-demo.yml` | Time scale 20, checks every 5 seconds, so deadlines and escalations take seconds |
 | `prod` | `application-prod.yml` | No demo data. `JWT_SECRET` must be provided or the app will not start |
 
 Project settings under `iitsm:`:
 
-- `iitsm.sla.time-scale`: above 1 speeds up time (at 10, a 30-minute SLA passes in 3 minutes), for demos.
+- `iitsm.sla.time-scale`: above 1 speeds up time (at 10, a 30-minute SLA passes in 3 minutes), for demos. Default 1.
 - `iitsm.sla.warning-threshold`: 0.8 = "at risk" at 80% of the deadline.
-- `iitsm.sla.monitor-interval-ms`: how often the background checker will run.
-- `iitsm.escalation.level-timeout-minutes`: time before escalating to the next level.
+- `iitsm.sla.monitor-interval-ms`: how often the SLA monitor and the escalation check run (30000 by default).
+- `iitsm.escalation.level-timeout-minutes`: time before escalating to the next level (5 by default).
+
+Settings that can change while the app runs live in the `system_config` table, not in these files. The admin screens change the assignment strategy and the team-lead switch; the duplicate window and threshold and the priority bump (`duplicate.window.hours`, `duplicate.threshold`, `priority.bump.users`) are changed in the table.
+
+**Mail:** SMTP connect, read and write timeouts are 20 seconds, and `/actuator/health` does not check the mail server, so a slow mail server cannot hang the app.
 
 **Secrets:** never commit the real JWT secret or SMTP password. Use environment variables or a local `.env` file (ignored by Git). `.env.example` is the safe template.
 
 ## 3.8 Docker Compose
 
-- **postgres:** the database on port 5432 with a named volume so data survives restarts. To wipe everything: `docker compose down -v`.
-- **mailpit:** accepts emails on port 1025 and shows them at http://localhost:8025. No real emails are sent.
+- **postgres:** the database on port 5432 with a named volume so data survives restarts. It has a health check, which is why `docker compose up -d --wait` returns only when the database is ready. To wipe everything: `docker compose down -v`.
+- **mailpit:** accepts emails on port 1025 and shows them at http://localhost:8025. No real emails are sent. It does no reverse DNS lookup of the sender (`MP_SMTP_DISABLE_RDNS`), because that made it slow on Docker Desktop.
 
-The backend itself is not in Compose yet; run it from your IDE or `mvn spring-boot:run`.
+The backend and frontend are not in Compose; run them with the start script or by hand (section 1).
 
 ## 3.9 Error handling
 
 ```
 IitsmException (abstract, carries an HTTP status)
+ ├── InvalidInputException              400
  ├── InvalidCredentialsException        401
  ├── UnauthorizedOperationException     403
- ├── IncidentNotFoundException          404
- ├── ServiceNotFoundException           404
+ ├── ResourceNotFoundException          404
+ │    (and the specific IncidentNotFoundException, ServiceNotFoundException   404)
  ├── InvalidStateTransitionException    409
  ├── DuplicateIncidentException         409
+ ├── DuplicateResourceException         409
  ├── TechnicianUnavailableException     422
  ├── WorkloadExceededException          422
  └── MissingSlaConfigurationException   500
@@ -726,55 +762,78 @@ Any code can `throw new InvalidStateTransitionException("NEW", "CLOSED")`. One c
   "message": "Cannot move incident from NEW to CLOSED", "path": "/api/incidents/5/close" }
 ```
 
-It also handles validation errors (400, listing the bad fields), database failures (503) and unexpected errors (500, logged instead of leaked). Business code stays free of try/catch, and the frontend always gets errors in one shape.
+It also handles validation errors (400, listing the bad fields in `fieldErrors`), unreadable request bodies and wrong parameter types (400), database failures (503) and unexpected errors (500, logged instead of leaked). Business code stays free of try/catch, and the frontend always gets errors in one shape.
 
-## 3.10 The test
+One detail worth knowing: Spring checks `@Valid` request bodies *before* `@PreAuthorize`, so a non-admin who sends an invalid body to an admin address gets 400, not 403.
 
-`IitsmApplicationTests` is a **smoke test**. It uses **Testcontainers** to start a throwaway Postgres in Docker, then:
+## 3.10 Tests
 
-1. starts the full application,
-2. runs all Flyway migrations,
-3. lets Hibernate validate that every mapped class matches its table,
-4. loads the demo users and confirms each is the correct subclass (and a team lead is also a `Technician`).
+`cd backend && mvn clean verify` runs more than 650 tests. Docker must be running, because database tests use **Testcontainers** to start one throwaway Postgres, shared by all of them.
 
-If it passes, migrations, mappings and inheritance agree. Docker must be running.
-
-## 3.11 Design patterns visible so far
-
-| Pattern | Where | Status |
+| Kind | Where | How it works |
 |---|---|---|
-| Adapter | `UserPrincipal` adapts `User` to Spring Security's `UserDetails` | Present |
-| Repository | Spring Data repositories such as `UserRepository` | Present (framework-provided) |
-| State | Incident lifecycle | Planned |
-| Strategy | Assignment, priority calculation, similarity | Planned |
-| Observer | Audit logging and notifications on incident changes | Planned |
-| Factory | Notification channel creation | Planned |
+| Pure logic | `domain`, `strategy`, `util`, notification rules | Plain JUnit 5, no Spring, no database |
+| Service logic | `service`, `observer`, `notification` | Plain JUnit 5 with hand-written fake repositories (Mockito cannot mock concrete classes on JDK 27) |
+| Integration | classes extending `AbstractIntegrationTest` | The full application against the throwaway Postgres, demo seed data, and a `MutableClock` starting at 2026-11-10 09:00 UTC so tests can move time instead of waiting |
+| API | classes extending `AbstractApiTest` | MockMvc requests through the real security chain with real JWTs (`bearer("emp1")`) |
+| Workflows | `com.iitsm.workflow` | The three demo workflows replayed through the API with the clock moved by hand |
+
+Database tests are `@Transactional` and roll back, so they leave nothing behind. Notifications are written only after a commit, so they have their own tests. [`docs/TEST_CASES.md`](docs/TEST_CASES.md) lists the test cases (normal, boundary, invalid input, exception, authorization, business rule) and the test that covers each.
+
+## 3.11 Design patterns
+
+| Pattern | Where |
+|---|---|
+| State | The incident lifecycle: `Incident` delegates to one class per status (`AssignedState`, `InProgressState`, ...) in `domain/incident/state`, behind `IncidentStateMachine` |
+| Strategy | `PriorityCalculator`, `AssignmentStrategy` (skill-based, load-based, round-robin; switchable by an admin), `SimilarityStrategy` |
+| Observer | `IncidentEventPublisher` tells every `IncidentObserver`: `AuditObserver` writes the history, `NotificationObserver` sends notifications after the transaction commits |
+| Factory | `NotificationChannelFactory` (in-app, email), `IncidentFactory`, `UserFactory` (builds the right user subclass for a role) |
+| Facade | `IncidentFacade`, `AuditFacade`, `CatalogFacade`, `ReportFacade` and the others: one transactional entry point per controller area |
+| Adapter | `UserPrincipal` adapts `User` to Spring Security's `UserDetails` |
+| Repository | Spring Data repositories such as `IncidentRepository` |
 
 ## 3.12 Working in the repo: conventions
 
-- **Put code in the right layer.** Controller: HTTP only. Service: rules. Repository: database.
+- **Put code in the right layer.** Controller: HTTP only. Facade and service: rules. Repository: database.
 - **Pick the entity base class from the table's columns** (Hibernate runs in `validate` mode and fails startup on any mismatch): `BaseEntity` for tables with `created_at` and `updated_at` (`users`, `teams`, `incidents`); `CreatedOnlyEntity` for tables with only `created_at` (`incident_comments`, `audit_logs`, `notifications`, `feedback`); no base class (own `@Id`) for tables with no timestamps (`skills`, `categories`, `it_services`, `sla_policies`, `system_config`, `technician_skills`).
 - **Map SQL types exactly:** `SMALLINT` -> `short`, `INT` -> `int`, `BIGINT` -> `Long`, `TIMESTAMPTZ` -> `Instant`, enum columns -> `@Enumerated(EnumType.STRING)`. Mapping a `SMALLINT` column to `int` fails validation.
-- **Never return entities from controllers.** Use DTOs so API shapes do not leak database details.
-- **Schema changes only through new Flyway files.**
+- **Never return entities from controllers.** Use DTOs, and map entities to DTOs inside a transaction (the Facade does this), because lazy relations cannot be read afterwards.
+- **Business code uses the injected `Clock`,** never `Instant.now()`.
+- **Schema changes only through new Flyway files** (next free number: V6).
 - **No secrets in Git.**
 - **Throw our custom exceptions** for business errors.
-- **Run `mvn verify` before pushing.**
+- **Write tests with the item.** Pure logic with plain JUnit; database and API tests extend `AbstractIntegrationTest` or `AbstractApiTest`.
+- **Run `mvn clean verify` before pushing** (Docker must be running).
 - **Commit small and often** with clear messages, and pull before you push.
 
-## 3.13 What does not exist yet
+## 3.13 What is not built
 
-- Incident entity, creation, priority calculation
-- The lifecycle state machine
-- Technician assignment strategies
-- SLA monitoring (scheduling is enabled but nothing is scheduled yet)
-- Audit and notification observers; email sending
-- Search, filtering, reports, dashboards
-- Duplicate detection, auto-categorization, auto-escalation
-- The React frontend
-- Java entities for skills, categories, services, SLA policies, comments, audit logs, notifications and feedback. **The tables exist, the classes do not yet.** Hibernate only validates tables that have a matching class, so this is harmless.
+- The innovation extras and the submission documents (Phase 8).
+- Real push notifications: the frontend polls for new notifications every 15 seconds.
+- Security extras: refresh tokens, rate limiting and account lockout. The token is kept in the browser's `localStorage`.
+- Reassigning an incident after it has been acknowledged.
+- Deployment to a cloud: the backend and frontend run locally, only Postgres and Mailpit are in Docker Compose.
+- Automated frontend tests: the frontend is checked by `npm run build` and by following the demo script.
 
-## 3.14 Glossary
+## 3.14 REST API at a glance
+
+Every address except the first three needs `Authorization: Bearer <token>`. "Admin" means ADMINISTRATOR or IT_MANAGER. Swagger UI lists every request and response shape.
+
+| Area | Addresses | Who |
+|---|---|---|
+| Account | `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me` | login and register are public; `me` any user |
+| Incidents | `POST /api/incidents`, `GET /api/incidents` (search with filters and paging), `GET /api/incidents/{id}`, `POST /api/incidents/suggest-category` | any user, results limited to what the role may see |
+| Incident actions | `POST /api/incidents/{id}/` + `acknowledge`, `start`, `resolve` (the assignee); `verify`, `reopen` (the reporter); `cancel` (the reporter or an admin); `close`, `duplicate`, `reassign`, `priority` (admin) | see the item 5.2 rules |
+| Incident details | `GET /api/incidents/{id}/` + `comments`, `feedback`, `history`, `recommendations` (admin); `POST` on `comments` and `feedback` | people involved, plus admins |
+| Notifications | `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all` | the logged-in user's own |
+| Technician | `GET /api/technicians/me/workload`, `PUT /api/technicians/me/availability` | technicians and team leads |
+| Reference data | `GET /api/services`, `GET /api/categories`, `GET /api/skills` | any user |
+| Admin: people | `/api/admin/users`, `/api/admin/teams`, `/api/admin/technicians/{id}` (and `/skills`) | admin |
+| Admin: configuration | `/api/admin/services`, `/api/admin/categories`, `/api/admin/sla-policies`, `/api/admin/config/assignment-strategy`, `/api/admin/config/team-lead-assignment` | admin |
+| Audit | `GET /api/audit` | admin |
+| Reports | `GET /api/reports/` + `overview`, `technician-workload`, `service-analysis`, `category-distribution`, `priority-distribution`, `sla-compliance`, `incidents-per-day` | admin |
+
+## 3.15 Glossary
 
 | Term | Meaning |
 |---|---|
@@ -794,3 +853,6 @@ If it passes, migrations, mappings and inheritance agree. Docker must be running
 | **Discriminator** | The column saying which subclass a row belongs to |
 | **SLA** | Service Level Agreement: response and resolution time targets |
 | **Testcontainers** | Starts real Docker containers (like Postgres) during tests |
+| **Facade** | A class that gives a controller one simple, transactional entry point to several services |
+| **Strategy / Observer / State** | Design patterns: swap an algorithm, react to events, change behaviour with the status |
+| **Clock** | The injected source of time, so tests can move time and SLA code never calls `Instant.now()` |
