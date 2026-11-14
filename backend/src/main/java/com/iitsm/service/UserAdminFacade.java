@@ -2,6 +2,7 @@ package com.iitsm.service;
 
 import com.iitsm.domain.catalog.Skill;
 import com.iitsm.domain.catalog.TechnicianSkill;
+import com.iitsm.domain.incident.IncidentStatus;
 import com.iitsm.domain.user.Administrator;
 import com.iitsm.domain.user.Employee;
 import com.iitsm.domain.user.ITManager;
@@ -21,6 +22,7 @@ import com.iitsm.exception.DuplicateResourceException;
 import com.iitsm.exception.InvalidInputException;
 import com.iitsm.exception.ResourceNotFoundException;
 import com.iitsm.exception.UnauthorizedOperationException;
+import com.iitsm.repository.IncidentRepository;
 import com.iitsm.repository.SkillRepository;
 import com.iitsm.repository.TeamRepository;
 import com.iitsm.repository.TechnicianRepository;
@@ -62,10 +64,12 @@ public class UserAdminFacade {
     private final UserFactory userFactory;
     private final CurrentUserService currentUser;
     private final ResponseMapper mapper;
+    private final IncidentRepository incidents;
 
     public UserAdminFacade(UserRepository users, TeamRepository teams, TechnicianRepository technicians,
                            SkillRepository skills, TechnicianSkillRepository technicianSkills,
-                           UserFactory userFactory, CurrentUserService currentUser, ResponseMapper mapper) {
+                           UserFactory userFactory, CurrentUserService currentUser, ResponseMapper mapper,
+                           IncidentRepository incidents) {
         this.users = users;
         this.teams = teams;
         this.technicians = technicians;
@@ -74,6 +78,7 @@ public class UserAdminFacade {
         this.userFactory = userFactory;
         this.currentUser = currentUser;
         this.mapper = mapper;
+        this.incidents = incidents;
     }
 
     // ------------------------------------------------------------------ signing up and "who am I"
@@ -128,11 +133,20 @@ public class UserAdminFacade {
     /**
      * Changes the name, switches the account on or off, and (for an employee) the department.
      * An administrator cannot switch off their own account, so the system cannot be left without one by mistake.
+     * A technician who still has open incidents cannot be switched off either: those incidents would be stuck
+     * with nobody able to work on them, so they must be reassigned first.
      */
     public UserResponse updateUser(Long id, AdminRequests.UpdateUser request) {
         User user = user(id);
         if (!request.active() && currentUser.requireUser().getId().equals(id)) {
             throw new InvalidInputException("You cannot deactivate your own account");
+        }
+        if (!request.active() && user.isActive() && Hibernate.unproxy(user) instanceof Technician) {
+            long open = incidents.countByAssigneeIdAndStatusIn(id, IncidentStatus.workloadStatuses());
+            if (open > 0) {
+                throw new InvalidInputException(user.getFullName() + " still has " + open + " open incident"
+                        + (open == 1 ? "" : "s") + "; reassign " + (open == 1 ? "it" : "them") + " before deactivating the account");
+            }
         }
         user.rename(request.fullName().strip());
         if (request.active()) {

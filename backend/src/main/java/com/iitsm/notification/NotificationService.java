@@ -11,7 +11,7 @@ import com.iitsm.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,23 +25,36 @@ public class NotificationService {
     private final IncidentRepository incidents;
     private final UserRepository users;
     private final NotificationChannelFactory channels;
+    private final TransactionTemplate transactions;
 
-    public NotificationService(IncidentRepository incidents, UserRepository users, NotificationChannelFactory channels) {
+    public NotificationService(IncidentRepository incidents, UserRepository users, NotificationChannelFactory channels,
+                               TransactionTemplate transactions) {
         this.incidents = incidents;
         this.users = users;
         this.channels = channels;
+        this.transactions = transactions;
     }
 
     /**
      * Looks everything up again from the ids in the request. Called after the original change is committed,
      * so the incident is guaranteed to be visible. A failure to deliver to one channel never stops the others.
+     * <p>
+     * The in-app notifications are saved in one short transaction; the e-mails are sent only after it has ended,
+     * so a slow or unreachable mail server never holds a database connection.
      */
-    @Transactional
     public void notify(NotificationRequest request) {
+        List<NotificationMessage> emails = transactions.execute(status -> saveInApp(request));
+        if (emails != null) {
+            emails.forEach(message -> deliver(ChannelType.EMAIL, message));
+        }
+    }
+
+    /** Saves the in-app notifications and returns the e-mails still to send. Deactivated accounts get nothing. */
+    private List<NotificationMessage> saveInApp(NotificationRequest request) {
         Incident incident = incidents.findById(request.incidentId()).orElse(null);
         if (incident == null) {
             log.warn("No notification sent for {}: incident {} not found", request.type(), request.incidentId());
-            return;
+            return List.of();
         }
         Rule rule = NotificationRules.ruleFor(request.type());
 
@@ -51,13 +64,18 @@ public class NotificationService {
 
         List<Delivery> deliveries = NotificationRules.plan(rule, incident.getReporter(), incident.getAssignee(), admins, explicit);
         String text = text(incident, request);
+        List<NotificationMessage> emails = new ArrayList<>();
         for (Delivery delivery : deliveries) {
+            if (!delivery.user().isActive()) {      // also loads the user, so the e-mail address is readable later
+                continue;
+            }
             NotificationMessage message = new NotificationMessage(delivery.user(), incident, request.type(), text);
             deliver(ChannelType.IN_APP, message);
             if (delivery.email()) {
-                deliver(ChannelType.EMAIL, message);
+                emails.add(message);
             }
         }
+        return emails;
     }
 
     private List<User> allAdmins() {

@@ -30,7 +30,7 @@ export default function TechniciansPage() {
       <ErrorBox error={data.error} />
 
       {editing && D && (
-        <TechnicianEditor technician={editing} teams={D.teams} skills={D.skills}
+        <TechnicianEditor key={editing.id} technician={editing} teams={D.teams} skills={D.skills}
           onCancel={() => setEditing(null)}
           onDone={(msg) => { setFlash(msg); setEditing(null); data.reload(); }} />
       )}

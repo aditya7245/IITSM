@@ -8,6 +8,13 @@ import { formatDateTime, label, levelLabel, PRIORITIES, relative, TERMINAL } fro
 import { ErrorBox, Loading, PriorityBadge, SlaBadge, StatusBadge, SuccessBox } from '../components/ui';
 
 const REFRESH_MS = 20000;   // keeps the SLA state and status fresh while the page is open
+const MAX_TEXT = 5000;      // the backend's limit for descriptions, resolutions and comments
+
+// The same rules as the backend: admins can (re)assign until the work is resolved, change the priority once it
+// is classified and until it is resolved, and mark duplicates up to acknowledgement.
+const REASSIGNABLE = ['CLASSIFIED', 'ASSIGNED', 'ACKNOWLEDGED', 'IN_PROGRESS', 'PENDING_INFO'];
+const PRIORITY_CHANGEABLE = REASSIGNABLE;
+const DUPLICABLE = ['NEW', 'CLASSIFIED', 'ASSIGNED', 'ACKNOWLEDGED'];
 
 /**
  * One incident, for every role. Which actions appear depends on who is looking (reporter, assignee, admin)
@@ -50,6 +57,8 @@ export default function IncidentDetailPage() {
   const isReporter = user.id === inc.reporter?.id;
   const isAssignee = user.id === inc.assignee?.id;
   const isAdmin = group === 'admin';
+  // A team lead who is neither reporter nor assignee can only be here as the lead of the assignee's team.
+  const isTeamLeadView = user.role === 'TEAM_LEAD' && !isReporter && !isAssignee && Boolean(inc.assignee);
   const open = !TERMINAL.includes(s);
 
   /** Runs one action, then shows its result and reloads everything. */
@@ -84,9 +93,9 @@ export default function IncidentDetailPage() {
     buttons.push(<button key="verify" className="btn btn-primary" disabled={busy} onClick={() => act(post('verify'), 'Thank you. The fix is confirmed; please rate the service below.')}>Confirm it is fixed</button>);
     buttons.push(<button key="reopen" className="btn" onClick={toggle('reopen')}>Still broken: reopen</button>);
   }
-  if (isAdmin && ['CLASSIFIED', 'ASSIGNED'].includes(s)) buttons.push(<button key="reassign" className="btn" onClick={toggle('reassign')}>{inc.assignee ? 'Reassign' : 'Assign'}</button>);
-  if (isAdmin && open && !['RESOLVED', 'VERIFIED'].includes(s)) buttons.push(<button key="priority" className="btn" onClick={toggle('priority')}>Change priority</button>);
-  if (isAdmin && ['NEW', 'CLASSIFIED', 'ASSIGNED', 'ACKNOWLEDGED'].includes(s)) buttons.push(<button key="dup" className="btn" onClick={toggle('duplicate')}>Mark duplicate</button>);
+  if (isAdmin && REASSIGNABLE.includes(s)) buttons.push(<button key="reassign" className="btn" onClick={toggle('reassign')}>{inc.assignee ? 'Reassign' : 'Assign'}</button>);
+  if (isAdmin && PRIORITY_CHANGEABLE.includes(s)) buttons.push(<button key="priority" className="btn" onClick={toggle('priority')}>Change priority</button>);
+  if (isAdmin && DUPLICABLE.includes(s)) buttons.push(<button key="dup" className="btn" onClick={toggle('duplicate')}>Mark duplicate</button>);
   if (isAdmin && s === 'VERIFIED') buttons.push(<button key="close" className="btn" disabled={busy} onClick={() => act(post('close'), 'Incident closed.')}>Close without feedback</button>);
   if ((isReporter || isAdmin) && ['NEW', 'CLASSIFIED', 'ASSIGNED'].includes(s)) buttons.push(<button key="cancel" className="btn btn-danger-outline" onClick={toggle('cancel')}>Cancel incident</button>);
 
@@ -149,6 +158,11 @@ export default function IncidentDetailPage() {
       {mode === 'duplicate' && <DuplicateForm incident={inc} busy={busy} onCancel={() => setMode(null)}
         onSubmit={(original) => act(post('duplicate', { originalId: original.id }), `Marked as a duplicate of ${original.incidentNumber}.`)} />}
 
+      {isAdmin && DUPLICABLE.includes(s) && (
+        <SimilarIncidents incident={inc} busy={busy}
+          onMark={(original) => act(post('duplicate', { originalId: original.id }), `Marked as a duplicate of ${original.number}.`)} />
+      )}
+
       {isReporter && s === 'VERIFIED' && (
         <FeedbackForm busy={busy}
           onSubmit={(rating, comments) => act(post('feedback', { rating, comments }), 'Thank you for your feedback. The incident is now closed.')} />
@@ -174,7 +188,7 @@ export default function IncidentDetailPage() {
             )}
           </section>
 
-          <Conversation incident={inc} comments={comments} isReporter={isReporter} canNote={open && (isAssignee || isAdmin)}
+          <Conversation incident={inc} comments={comments} isReporter={isReporter} canNote={open && (isAssignee || isAdmin || isTeamLeadView)}
             canReply={open && isReporter} busy={busy}
             onSend={(type, text) => act(() => api.post(`/api/incidents/${inc.id}/comments`, { type, body: text }),
               type === 'INFO_RESPONSE' ? 'Your answer was sent.' : 'Note added.')} />
@@ -255,7 +269,7 @@ function TextForm({ title, fieldLabel, hint, submitText, busy, onSubmit, onCance
       <h3>{title}</h3>
       <label className="field">
         <span className="field-label">{fieldLabel}</span>
-        <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} required autoFocus />
+        <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} required autoFocus maxLength={MAX_TEXT} />
         {hint && <span className="field-hint">{hint}</span>}
       </label>
       <div className="button-row">
@@ -278,13 +292,17 @@ function ReassignForm({ incident, busy, onSubmit, onCancel }) {
     }}>
       <h3>{incident.assignee ? 'Reassign' : 'Assign'} the incident</h3>
       <p className="muted">Best matches for this incident, best first.</p>
+      {['ACKNOWLEDGED', 'IN_PROGRESS', 'PENDING_INFO'].includes(incident.status) && (
+        <p className="muted small">Work has already started: the new technician takes over from where it is, and the status and SLA times stay the same.</p>
+      )}
       <ErrorBox error={recs.error} />
       {recs.loading && !recs.data && <Loading what="recommendations" />}
       {recs.data && list.length === 0 && <p className="muted">No technician is available with the needed skill and free capacity.</p>}
       <div className="choice-list">
         {list.map((t, i) => (
           <label key={t.id} className={`choice${choice === String(t.id) ? ' selected' : ''}`}>
-            <input type="radio" name="tech" value={t.id} checked={choice === String(t.id)} onChange={(e) => setChoice(e.target.value)} />
+            <input type="radio" name="tech" value={t.id} checked={choice === String(t.id)} onChange={(e) => setChoice(e.target.value)}
+              disabled={incident.assignee?.id === t.id} />
             <span>
               <strong>{t.fullName}</strong>{i === 0 && <span className="badge tone-good small-badge">Best match</span>}
               {incident.assignee?.id === t.id && <span className="badge tone-neutral small-badge">Current</span>}
@@ -319,6 +337,30 @@ function PriorityForm({ current, busy, onSubmit, onCancel }) {
         <button type="button" className="btn" onClick={onCancel}>Cancel</button>
       </div>
     </form>
+  );
+}
+
+/** Admins: open incidents on the same service that look like the same problem, each one click from being linked. */
+function SimilarIncidents({ incident, busy, onMark }) {
+  const similar = useLoad(async () => (await api.get(`/api/incidents/${incident.id}/similar`)).data,
+    [incident.id, incident.status]);
+  if (similar.error) return <ErrorBox error={`Could not look for duplicates: ${similar.error}`} />;
+  if (!similar.data || similar.data.length === 0) return null;
+  return (
+    <section className="card">
+      <h2>Possible duplicates</h2>
+      <p className="muted small">Open incidents on the same service with similar wording. Mark this incident as a duplicate if it is the same problem.</p>
+      <ul className="similar-list">
+        {similar.data.map((c) => (
+          <li key={c.id}>
+            <Link to={`/incidents/${c.id}`} className="mono">{c.number}</Link>
+            <span className="similar-title">{c.title}</span>
+            <span className="muted small">{Math.round(c.score * 100)}% alike</span>
+            <button type="button" className="btn btn-small" disabled={busy} onClick={() => onMark(c)}>Mark duplicate of {c.number}</button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -372,7 +414,7 @@ function FeedbackForm({ busy, onSubmit }) {
       </div>
       <label className="field">
         <span className="field-label">Comments (optional)</span>
-        <textarea rows={3} value={comments} onChange={(e) => setComments(e.target.value)} />
+        <textarea rows={3} value={comments} onChange={(e) => setComments(e.target.value)} maxLength={2000} />
       </label>
       <button type="submit" className="btn btn-primary" disabled={busy || !rating}>Send feedback and close</button>
     </form>
@@ -415,7 +457,7 @@ function Conversation({ incident, comments, isReporter, canNote, canReply, busy,
             <span className="field-label">
               {canReply ? (incident.status === 'PENDING_INFO' ? 'Your answer' : 'Add information for the technician') : 'Add an internal note'}
             </span>
-            <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+            <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} />
           </label>
           <button type="submit" className="btn btn-primary" disabled={busy || !text.trim()}>
             {canReply ? 'Send' : 'Add note'}

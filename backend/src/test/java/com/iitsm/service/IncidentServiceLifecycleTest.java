@@ -369,7 +369,8 @@ class IncidentServiceLifecycleTest {
         assertSame(otherTech, incident.getAssignee());
         assertEquals(IncidentStatus.ASSIGNED, incident.getStatus());
         assertAnnounced(IncidentEventType.ASSIGNED, IncidentStatus.ASSIGNED, IncidentStatus.ASSIGNED, admin);
-        assertTrue(published.get(0).description().startsWith("Reassigned to Olga Other"), published.get(0).description());
+        assertTrue(published.get(0).description().startsWith("Reassigned from Tom Technician to Olga Other"),
+                published.get(0).description());
     }
 
     @Test
@@ -385,13 +386,24 @@ class IncidentServiceLifecycleTest {
     }
 
     @Test
-    void reassignmentIsRefusedOnceTheIncidentIsAcknowledged() {
+    void anAcknowledgedIncidentIsHandedOverAndKeepsItsStatus() {
         Incident incident = acknowledged();
+
+        service.reassign(incident.getId(), 4L, admin);
+
+        assertSame(otherTech, incident.getAssignee());
+        assertEquals(IncidentStatus.ACKNOWLEDGED, incident.getStatus());
+        assertAnnounced(IncidentEventType.ASSIGNED, IncidentStatus.ACKNOWLEDGED, IncidentStatus.ACKNOWLEDGED, admin);
+    }
+
+    @Test
+    void reassignmentIsRefusedOnceTheIncidentIsResolved() {
+        Incident incident = resolved();
 
         assertThrows(InvalidStateTransitionException.class, () -> service.reassign(incident.getId(), 4L, admin));
 
         assertSame(tech, incident.getAssignee());
-        assertEquals(IncidentStatus.ACKNOWLEDGED, incident.getStatus());
+        assertEquals(IncidentStatus.RESOLVED, incident.getStatus());
         assertTrue(published.isEmpty());
     }
 

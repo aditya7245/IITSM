@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -76,6 +78,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ApiError> handleDenied(AccessDeniedException ex, HttpServletRequest req) {
         return ResponseEntity.status(403).body(ApiError.of(403, "Forbidden", "You are not allowed to perform this operation", req.getRequestURI()));
+    }
+
+    /** Someone else changed the same record between reading and saving it (optimistic lock on incidents). */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ApiError> handleConcurrentChange(OptimisticLockingFailureException ex, HttpServletRequest req) {
+        return ResponseEntity.status(409).body(ApiError.of(409, "Conflict",
+                "This record was changed by someone else at the same time. Reload it and try again.", req.getRequestURI()));
+    }
+
+    /** A database rule (unique value, allowed range) refused the change: the request conflicts with existing data. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> handleConstraint(DataIntegrityViolationException ex, HttpServletRequest req) {
+        log.warn("Constraint violation on {}: {}", req.getRequestURI(), ex.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(409).body(ApiError.of(409, "Conflict",
+                "The change conflicts with existing data (for example it was already submitted)", req.getRequestURI()));
     }
 
     @ExceptionHandler(DataAccessException.class)

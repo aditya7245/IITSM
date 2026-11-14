@@ -9,6 +9,7 @@ import com.iitsm.domain.sla.SlaPolicy;
 import com.iitsm.domain.user.Technician;
 import com.iitsm.domain.user.User;
 import com.iitsm.config.SlaProperties;
+import com.iitsm.exception.DuplicateIncidentException;
 import com.iitsm.exception.IncidentNotFoundException;
 import com.iitsm.exception.InvalidInputException;
 import com.iitsm.exception.InvalidStateTransitionException;
@@ -199,6 +200,14 @@ public class IncidentService {
             throw new InvalidInputException("The original incident is required");
         }
         Incident original = load(originalId);
+        if (original.getStatus() == IncidentStatus.DUPLICATE && original.getDuplicateOf() != null) {
+            throw DuplicateIncidentException.chain(original.getIncidentNumber(),
+                    original.getDuplicateOf().getIncidentNumber());
+        }
+        if (original.getStatus() == IncidentStatus.CANCELLED) {
+            throw new InvalidInputException(original.getIncidentNumber()
+                    + " was cancelled, so it cannot be the original of a duplicate");
+        }
         IncidentStatus previous = incident.getStatus();
         incident.markDuplicateOf(original);
         return saveAndPublish(IncidentEventType.MARKED_DUPLICATE, incident, actor, previous,
@@ -206,8 +215,10 @@ public class IncidentService {
     }
 
     /**
-     * An admin hands the incident to a technician of their choice. Only while CLASSIFIED (nobody assigned yet,
-     * for example after ASSIGNMENT_FAILED) or ASSIGNED (not yet acknowledged); later reassignment is out of scope.
+     * An admin hands the incident to a technician of their choice. While CLASSIFIED (nobody assigned yet, for
+     * example after ASSIGNMENT_FAILED) or ASSIGNED it is an assignment (the new technician must acknowledge).
+     * Once work has started (ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO) it is a hand-over: the status and SLA times
+     * stay, so an incident never gets stuck with a technician who is away or has left.
      *
      * @throws InvalidStateTransitionException                     if the incident is in any other status
      * @throws InvalidInputException                                if the technician already has this incident
@@ -219,17 +230,22 @@ public class IncidentService {
         Incident incident = load(id);
         access.requireAdmin(actor);
         IncidentStatus previous = incident.getStatus();
-        if (previous != IncidentStatus.CLASSIFIED && previous != IncidentStatus.ASSIGNED) {
+        if (!incident.canBeReassigned()) {
             throw new InvalidStateTransitionException(previous.name(), IncidentStatus.ASSIGNED.name());
         }
         if (incident.getAssignee() != null && incident.getAssignee().getId().equals(technicianId)) {
             throw new InvalidInputException("The incident is already assigned to " + incident.getAssignee().getFullName());
         }
         Technician technician = assignment.assignManually(incident, technicianId);
-        incident.assignTo(technician);
+        String from = incident.getAssignee() == null ? "" : " from " + incident.getAssignee().getFullName();
+        if (previous == IncidentStatus.CLASSIFIED || previous == IncidentStatus.ASSIGNED) {
+            incident.assignTo(technician);
+        } else {
+            incident.handOverTo(technician);
+        }
         return saveAndPublish(IncidentEventType.ASSIGNED, incident, actor, previous,
-                (previous == IncidentStatus.ASSIGNED ? "Reassigned to " : "Assigned to ") + technician.getFullName()
-                        + " by " + actor.getFullName());
+                (previous == IncidentStatus.CLASSIFIED ? "Assigned to " : "Reassigned" + from + " to ")
+                        + technician.getFullName() + " by " + actor.getFullName());
     }
 
     /**
@@ -251,6 +267,11 @@ public class IncidentService {
         int score = incident.getPriorityScore() == null ? 0 : incident.getPriorityScore();
 
         incident.changePriority(newPriority, score, deadlines.responseDeadline(), deadlines.resolutionDeadline());
+        // The deadlines changed, so the SLA status is worked out again (it may go down, e.g. P1 to P4).
+        incident.reevaluateSlaStatus(slaEvaluator.evaluate(incident.getCreatedAt(), incident.getResponseDeadline(),
+                incident.getResolutionDeadline(), incident.getRespondedAt(), incident.getResolvedAt(),
+                incident.getSlaPausedAt(), incident.getSlaPausedSeconds(), clock.instant(),
+                slaProperties.warningThreshold()));
         return saveAndPublish(IncidentEventType.PRIORITY_CHANGED, incident, actor, incident.getStatus(),
                 "Priority changed from " + oldPriority + " to " + newPriority + " by " + actor.getFullName());
     }

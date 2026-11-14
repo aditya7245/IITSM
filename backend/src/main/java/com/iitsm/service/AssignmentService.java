@@ -63,9 +63,13 @@ public class AssignmentService {
     /**
      * The best eligible technician according to the active strategy, or empty if nobody is suitable.
      * The strategy is told who was chosen (round-robin needs that to take turns).
+     * <p>
+     * Takes the assignment lock first, so workloads are counted only after any assignment that is still being
+     * saved has finished; the lock is held until the caller's transaction ends.
      */
     @Transactional(readOnly = true)
     public Optional<Technician> autoAssign(Incident incident) {
+        incidents.lockAssignments();
         AssignmentStrategy strategy = activeStrategy();
         List<TechnicianCandidate> ranked = rank(incident, strategy);
         if (ranked.isEmpty()) {
@@ -96,6 +100,7 @@ public class AssignmentService {
      */
     @Transactional(readOnly = true)
     public Technician assignManually(Incident incident, Long technicianId) {
+        incidents.lockAssignments();
         Technician technician = technicianId == null ? null : technicians.findById(technicianId).orElse(null);
         if (technician == null) {
             throw new TechnicianUnavailableException("technician " + technicianId + " does not exist");
@@ -112,17 +117,22 @@ public class AssignmentService {
     private List<TechnicianCandidate> rank(Incident incident, AssignmentStrategy strategy) {
         Skill requiredSkill = incident.getCategory() == null ? null : incident.getCategory().getRequiredSkill();
         Long requiredSkillId = requiredSkill == null ? null : requiredSkill.getId();
-        return strategy.rank(candidates(requiredSkillId, teamLeadsAllowed(incident)), requiredSkillId != null);
+        Long reporterId = incident.getReporter() == null ? null : incident.getReporter().getId();
+        return strategy.rank(candidates(requiredSkillId, teamLeadsAllowed(incident), reporterId), requiredSkillId != null);
     }
 
     private boolean teamLeadsAllowed(Incident incident) {
         return incident.getEscalationLevel() > 0 || config.getBoolean(ConfigKeys.AUTO_ASSIGN_TEAM_LEADS, false);
     }
 
-    /** Everyone who may take work, with their current workload and their level in the required skill. */
-    private List<TechnicianCandidate> candidates(Long requiredSkillId, boolean includeTeamLeads) {
+    /**
+     * Everyone who may take work, with their current workload and their level in the required skill.
+     * The reporter is left out: a technician who reports a problem must not resolve and verify it themselves.
+     */
+    private List<TechnicianCandidate> candidates(Long requiredSkillId, boolean includeTeamLeads, Long reporterId) {
         List<Technician> available = technicians.findByActiveTrueAndAvailableTrue().stream()
                 .filter(technician -> includeTeamLeads || technician.getRole() != Role.TEAM_LEAD)
+                .filter(technician -> !technician.getId().equals(reporterId))
                 .toList();
 
         Map<Long, Short> proficiencyByTechnician = Map.of();

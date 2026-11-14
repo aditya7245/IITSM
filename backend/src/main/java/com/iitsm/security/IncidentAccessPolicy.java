@@ -51,9 +51,12 @@ public class IncidentAccessPolicy {
         require(isAssignee(user, incident));
     }
 
-    /** Adding an internal note. */
-    public void requireAssigneeOrAdmin(User user, Incident incident) {
-        require(isAssignee(user, incident) || isAdmin(user));
+    /**
+     * Adding an internal note: the assignee, the team lead of the assignee's team (who receives the first
+     * escalation and must be able to record what they did about it), or an admin.
+     */
+    public void requireNoteAuthor(User user, Incident incident) {
+        require(isAssignee(user, incident) || isTeamLeadOfAssignee(user, incident) || isAdmin(user));
     }
 
     // ------------------------------------------------------------ reporter actions

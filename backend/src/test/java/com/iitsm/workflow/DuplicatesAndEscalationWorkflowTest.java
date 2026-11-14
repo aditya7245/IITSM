@@ -35,13 +35,16 @@ class DuplicatesAndEscalationWorkflowTest extends WorkflowTestBase {
         String first = reportPaymentOutage("emp1", "Payment application outage");
         String second = reportPaymentOutage("emp2", "Payment application down");
 
-        List<String> numbers = list(second, "$.possibleDuplicates[*].number");
-        assertEquals(List.of(text(first, "$.incident.incidentNumber")), numbers);
-        double score = ((Number) JsonPath.read(second, "$.possibleDuplicates[0].score")).doubleValue();
-        assertTrue(score > 0.7 && score < 0.72, "five of the seven different words are shared, but the score was " + score);
+        // emp2 may not open emp1's incident, so it is not shown to them; the administrator sees it instead
+        assertEquals(List.of(), list(second, "$.possibleDuplicates"));
         assertEquals("ASSIGNED", text(second, "$.incident.status"));          // only a warning: the incident exists
 
         long copy = number(second, "$.incident.id");
+        String similar = body(getAs("admin", url(copy, "similar")).andExpect(status().isOk()));
+        assertEquals(List.of(text(first, "$.incident.incidentNumber")), list(similar, "$[*].number"));
+        double score = ((Number) JsonPath.read(similar, "$[0].score")).doubleValue();
+        assertEquals(1.0, score, 1e-9, "\"outage\" and \"down\" are synonyms, so the reports match fully");
+
         String marked = body(postAs("admin", url(copy, "duplicate"),
                 "{\"originalId\": " + number(first, "$.incident.id") + "}").andExpect(status().isOk()));
 

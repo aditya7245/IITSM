@@ -61,7 +61,7 @@ class DuplicateDetectionServiceIntegrationTest extends AbstractIntegrationTest {
         return incidents.saveAndFlush(incident);
     }
 
-    /** Same service, shares 5 of 7 keywords with the checked incident (score 5/7 = 0.714). */
+    /** Same service and the same problem in other words: "down" and "unavailable" are synonyms, so the score is 1.0. */
     private Incident similar(Instant createdAt) {
         return save(payment, "Payment application down", "Users cannot complete payment transactions", createdAt);
     }
@@ -84,7 +84,7 @@ class DuplicateDetectionServiceIntegrationTest extends AbstractIntegrationTest {
         assertEquals(wanted.getId(), candidate.id());
         assertEquals(wanted.getIncidentNumber(), candidate.number());
         assertEquals("Payment application down", candidate.title());
-        assertEquals(5.0 / 7, candidate.score(), 1e-9);
+        assertEquals(1.0, candidate.score(), 1e-9);
     }
 
     @Test
@@ -133,7 +133,8 @@ class DuplicateDetectionServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void theThresholdSettingIsRespected() {
-        similar(T0.minus(Duration.ofHours(1)));   // score 0.714
+        save(payment, "Payment application slow", "Users cannot complete payment transactions",
+                T0.minus(Duration.ofHours(1)));   // shares 5 of 7 keywords: 0.714
 
         config.set(ConfigKeys.DUPLICATE_THRESHOLD, "0.9");
 

@@ -9,6 +9,7 @@ import com.iitsm.dto.FeedbackResponse;
 import com.iitsm.dto.IncidentActionRequests;
 import com.iitsm.dto.IncidentDetailResponse;
 import com.iitsm.dto.TechnicianSummaryResponse;
+import com.iitsm.service.DuplicateCandidate;
 import com.iitsm.service.IncidentFacade;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -122,6 +123,13 @@ public class IncidentController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<TechnicianSummaryResponse> recommendations(@PathVariable Long id) {
         return incidents.recommendations(id);
+    }
+
+    /** Open incidents on the same service that look like the same problem, for marking duplicates. */
+    @GetMapping("/{id}/similar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<DuplicateCandidate> similar(@PathVariable Long id) {
+        return incidents.similar(id);
     }
 
     // ------------------------------------------------------------------ conversation, feedback, history

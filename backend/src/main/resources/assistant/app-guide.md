@@ -7,13 +7,15 @@ a technician, technicians work them, and administrators oversee everything.
 
 - **Employee**: reports incidents and follows their own. Pages: "My incidents", "Report an incident".
 - **Technician**: works incidents assigned to them. Page: "My work".
-- **Team lead**: a technician who also leads a team; sees incidents assigned to their team and receives SLA
-  warnings and first-level escalations for the team.
+- **Team lead**: a technician who also leads a team; sees incidents assigned to their team, receives SLA
+  warnings and first-level escalations for the team, and can add internal notes ("Add note") on the team's incidents.
 - **Administrator**: sees everything. Pages: Dashboard, Incidents (search), Audit log, Users, Teams,
   Technicians, Services, Categories, SLA policies, Assignment settings.
 - **IT manager**: an administrator who also receives the last level of escalation.
 
-Anyone can register an account from the login page; new accounts are employees.
+Anyone can register an account from the login page; new accounts are employees. After 10 wrong passwords for
+one account within 15 minutes, logging in to it is blocked for a while; wait and try again. Descriptions, resolutions
+and comments can be up to 5000 characters long.
 
 ## Reporting an incident (employee)
 
@@ -78,9 +80,13 @@ example an incident cannot jump from New to Closed, and it cannot be cancelled o
   restarts the SLA clock; "Confirm it is fixed" or "Still broken: reopen" (when Resolved); after confirming, rates
   the service 1-5 stars with "Send feedback and close", which closes the incident; "Cancel incident" while New,
   Classified or Assigned.
-- **Administrator**: "Assign"/"Reassign" (when Classified or Assigned), "Change priority" (open and not yet
-  resolved), "Mark duplicate" (New, Classified, Assigned or Acknowledged; needs the original incident's number),
+- **Administrator**: "Assign"/"Reassign" (from Classified until the incident is resolved; once work has started,
+  the new technician takes over and the status and SLA times stay the same), "Change priority" (from Classified
+  until resolved), "Mark duplicate" (New, Classified, Assigned or Acknowledged: either type the original incident's
+  number, or click "Mark duplicate of INC..." in the "Possible duplicates" box on the incident page),
   "Close without feedback" (when Verified), "Cancel incident" (New, Classified or Assigned), and internal notes.
+  An incident cannot be marked a duplicate of a cancelled incident or of one that is itself a duplicate (link to
+  its original instead).
 
 Who can view an incident: its reporter, its assignee, the team lead of the assignee's team, and administrators.
 Internal notes are hidden from the reporter. Every incident page shows the full history (audit trail).
@@ -93,8 +99,10 @@ The administrator picks the strategy on "Assignment settings":
 - **Round robin**: technicians take turns.
 
 Only active, available technicians below their maximum workload are considered. Team leads are skipped unless the
-setting allows them or the incident has been escalated. If nobody fits, the incident stays Classified and
-administrators are notified to assign it manually. Administrators can see recommended technicians when assigning.
+setting allows them or the incident has been escalated. A technician is never assigned an incident they reported
+themselves. If nobody fits, the incident stays Classified and administrators are notified to assign it manually.
+Administrators can see recommended technicians when assigning. Many incidents reported at the same moment are
+assigned one after another, so nobody ends up above their maximum workload.
 
 ## Escalation (P1 only)
 
@@ -105,7 +113,10 @@ Escalation notifies people; it does not reassign the incident. Acknowledging sto
 ## Duplicate detection
 
 When an incident is reported, open incidents on the same service from the last 24 hours with similar wording are
-listed as possible duplicates. An administrator can then use "Mark duplicate" to link it to the original.
+found as possible duplicates. Different words for the same problem count as similar ("unavailable", "down",
+"failing" and "unable" all mean an outage; "payments" and "payment" are the same word). The reporter is only shown
+possible duplicates they reported themselves; administrators see all of them in the "Possible duplicates" box on
+the incident page and can link one with a single click.
 
 ## Notifications
 
@@ -121,6 +132,7 @@ requested and resolved (reporter), assignment failed and SLA violated (administr
   category and technician, with sorting.
 - **Audit log**: every recorded change, by whom and when. It cannot be edited.
 - **Users**: "New user" then "Create user" to add staff; "Edit" then "Save" to change someone or deactivate them.
+  A technician who still has open incidents cannot be deactivated: reassign their incidents first.
 - **Teams**: "Create team"; each team's lead is chosen from a drop-down list in its row, which saves at once.
 - **Technicians**: "Edit" then "Save" to change skills, availability, maximum workload, experience and team.
 - **Services**: "New service" / "Create service", or "Edit" / "Save"; each service has a business criticality 1-5.

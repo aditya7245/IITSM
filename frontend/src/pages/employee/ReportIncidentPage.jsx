@@ -115,7 +115,7 @@ export default function ReportIncidentPage() {
             <input value={form.title} onChange={set('title')} required maxLength={200} placeholder="For example: Payment application outage" />
           </Field>
           <Field label="Description" wide>
-            <textarea value={form.description} onChange={set('description')} required rows={5}
+            <textarea value={form.description} onChange={set('description')} required rows={5} maxLength={5000}
               placeholder="What happened, when it started, what you already tried." />
           </Field>
           <Field label="Service">

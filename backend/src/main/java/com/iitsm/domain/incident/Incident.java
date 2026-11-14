@@ -108,6 +108,17 @@ public class Incident extends BaseEntity {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+    /**
+     * Optimistic lock. Two transactions that both loaded the same version cannot both save: the second one fails
+     * instead of silently overwriting the first (for example the SLA monitor and a technician acting at once).
+     */
+    @Version
+    private Long version;
+
+    /** Statuses in which an admin may hand the work to another technician without changing the status. */
+    private static final Set<IncidentStatus> HANDOVER = EnumSet.of(IncidentStatus.ACKNOWLEDGED,
+            IncidentStatus.IN_PROGRESS, IncidentStatus.PENDING_INFO);
+
     /** Statuses in which the priority may still be changed: classified, but not yet resolved. */
     private static final Set<IncidentStatus> PRIORITY_CHANGEABLE = EnumSet.of(IncidentStatus.CLASSIFIED,
             IncidentStatus.ASSIGNED, IncidentStatus.ACKNOWLEDGED, IncidentStatus.IN_PROGRESS, IncidentStatus.PENDING_INFO);
@@ -178,6 +189,26 @@ public class Incident extends BaseEntity {
             this.status = IncidentStatus.ASSIGNED;
         }
         this.assignee = technician;
+    }
+
+    /**
+     * Hands work that has already started (ACKNOWLEDGED, IN_PROGRESS or PENDING_INFO) to another technician, for
+     * example when the first one is away. The status and the SLA times stay as they are; the new technician
+     * carries on from where the work is.
+     */
+    public void handOverTo(Technician technician) {
+        if (technician == null) {
+            throw new InvalidInputException("A technician is required");
+        }
+        if (!HANDOVER.contains(status)) {
+            throw new InvalidStateTransitionException(status.name(), status.name());
+        }
+        this.assignee = technician;
+    }
+
+    /** True while the incident can be given to a technician, either by assignment or by hand-over. */
+    public boolean canBeReassigned() {
+        return status == IncidentStatus.CLASSIFIED || status == IncidentStatus.ASSIGNED || HANDOVER.contains(status);
     }
 
     /** The technician accepts the incident. This counts as the response for the SLA. ASSIGNED to ACKNOWLEDGED. */
@@ -292,6 +323,17 @@ public class Incident extends BaseEntity {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Sets the SLA status to a freshly evaluated value, which may be lower than before. Only used after the
+     * deadlines themselves were recomputed (an admin changed the priority); the monitor only ever raises it.
+     */
+    public void reevaluateSlaStatus(SlaStatus evaluated) {
+        if (evaluated == null) {
+            throw new InvalidInputException("An SLA status is required");
+        }
+        this.slaStatus = evaluated;
     }
 
     public void incrementEscalationLevel() {

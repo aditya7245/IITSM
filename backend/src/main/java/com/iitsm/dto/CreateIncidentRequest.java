@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 /** What an employee fills in when reporting a problem. The limits are the same ones the service layer enforces. */
 public record CreateIncidentRequest(
         @NotBlank @Size(max = 200) String title,
-        @NotBlank String description,
+        @NotBlank @Size(max = 5000) String description,
         @NotNull Long categoryId,
         @NotNull Long serviceId,
         @Min(1) @Max(3) short impact,

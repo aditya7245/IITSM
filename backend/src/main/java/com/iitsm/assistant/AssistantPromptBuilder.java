@@ -48,7 +48,8 @@ public final class AssistantPromptBuilder {
     }
 
     private static final Set<IncidentStatus> CANCELLABLE = EnumSet.of(NEW, CLASSIFIED, ASSIGNED);
-    private static final Set<IncidentStatus> ASSIGNABLE = EnumSet.of(CLASSIFIED, ASSIGNED);
+    private static final Set<IncidentStatus> ASSIGNABLE = EnumSet.of(CLASSIFIED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO);
+    private static final Set<IncidentStatus> PRIORITY_CHANGEABLE = EnumSet.of(CLASSIFIED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO);
     private static final Set<IncidentStatus> DUPLICABLE = EnumSet.of(NEW, CLASSIFIED, ASSIGNED, ACKNOWLEDGED);
 
     private final String guide;
@@ -137,10 +138,10 @@ public final class AssistantPromptBuilder {
         p.append("## The incident on screen\n");
         p.append("<incident>\n");
         p.append("Number: ").append(inc.incidentNumber()).append('\n');
-        p.append("Title: ").append(inc.title()).append('\n');
-        p.append("Description: ").append(inc.description()).append('\n');
+        p.append("Title: ").append(fenced(inc.title())).append('\n');
+        p.append("Description: ").append(fenced(inc.description())).append('\n');
         if (inc.resolution() != null) {
-            p.append("Resolution written by the technician: ").append(inc.resolution()).append('\n');
+            p.append("Resolution written by the technician: ").append(fenced(inc.resolution())).append('\n');
         }
         p.append("</incident>\n");
         p.append("Status: ").append(label(inc.status())).append('\n');
@@ -154,10 +155,12 @@ public final class AssistantPromptBuilder {
         p.append("SLA status: ").append(inc.slaStatus() == null ? "not tracked yet" : label(inc.slaStatus()))
                 .append(inc.slaPausedAt() != null ? " (clock paused while waiting for the reporter)" : "").append('\n');
         if (inc.responseDeadline() != null) {
-            p.append("Response deadline: ").append(inc.respondedAt() != null ? "met (acknowledged)" : when(inc.responseDeadline(), now)).append('\n');
+            p.append("Response deadline: ").append(inc.respondedAt() != null
+                    ? outcome(inc.respondedAt(), inc.responseDeadline(), "acknowledged") : when(inc.responseDeadline(), now)).append('\n');
         }
         if (inc.resolutionDeadline() != null) {
-            p.append("Resolution deadline: ").append(inc.resolvedAt() != null ? "met (resolved)" : when(inc.resolutionDeadline(), now)).append('\n');
+            p.append("Resolution deadline: ").append(inc.resolvedAt() != null
+                    ? outcome(inc.resolvedAt(), inc.resolutionDeadline(), "resolved") : when(inc.resolutionDeadline(), now)).append('\n');
         }
         if (inc.escalationLevel() > 0) {
             p.append("Escalation level: ").append(inc.escalationLevel()).append(" of 3\n");
@@ -170,16 +173,18 @@ public final class AssistantPromptBuilder {
         if (reporter) relation.add("the reporter");
         if (assignee) relation.add("the assigned technician");
         if (admin) relation.add("an administrator");
-        p.append("This person is ").append(relation.isEmpty()
-                ? "viewing it as the team lead of the assignee's team (view only)" : String.join(" and ", relation)).append(".\n");
+        boolean teamLead = relation.isEmpty();   // the only other way to see an incident
+        p.append("This person is ").append(teamLead
+                ? "viewing it as the team lead of the assignee's team" : String.join(" and ", relation)).append(".\n");
 
-        List<String> actions = actionsFor(inc.status(), inc.assignee() != null, reporter, assignee, admin);
+        List<String> actions = actionsFor(inc.status(), inc.assignee() != null, reporter, assignee, admin, teamLead);
         p.append("Buttons this person can use on it now: ")
                 .append(actions.isEmpty() ? "none" : String.join("; ", actions)).append("\n\n");
     }
 
     /** The same rules the incident page uses to decide which buttons to show. */
-    static List<String> actionsFor(IncidentStatus s, boolean hasAssignee, boolean reporter, boolean assignee, boolean admin) {
+    static List<String> actionsFor(IncidentStatus s, boolean hasAssignee, boolean reporter, boolean assignee, boolean admin,
+                                   boolean teamLead) {
         List<String> a = new ArrayList<>();
         boolean open = s.isOpen();
         if (assignee && s == ASSIGNED) a.add("\"Acknowledge\"");
@@ -196,12 +201,22 @@ public final class AssistantPromptBuilder {
         if (reporter && s == PENDING_INFO) a.add("answer the technician's question in the Conversation box (\"Send\")");
         else if (reporter && open) a.add("add information for the technician in the Conversation box");
         if (admin && ASSIGNABLE.contains(s)) a.add(hasAssignee ? "\"Reassign\"" : "\"Assign\"");
-        if (admin && open && s != RESOLVED && s != VERIFIED) a.add("\"Change priority\"");
+        if (admin && PRIORITY_CHANGEABLE.contains(s)) a.add("\"Change priority\"");
         if (admin && DUPLICABLE.contains(s)) a.add("\"Mark duplicate\"");
         if (admin && s == VERIFIED) a.add("\"Close without feedback\"");
         if ((reporter || admin) && CANCELLABLE.contains(s)) a.add("\"Cancel incident\"");
-        if ((assignee || admin) && open) a.add("\"Add note\" (internal, hidden from the reporter)");
+        if ((assignee || admin || teamLead) && open) a.add("\"Add note\" (internal, hidden from the reporter)");
         return a;
+    }
+
+    /** Whether a deadline was kept: "met" only if the step happened at or before it. */
+    static String outcome(Instant doneAt, Instant deadline, String what) {
+        return doneAt.isAfter(deadline) ? "missed (" + what + " late)" : "met (" + what + " in time)";
+    }
+
+    /** User-typed text cannot close the {@code <incident>} block early and pose as instructions. */
+    static String fenced(String text) {
+        return text == null ? "" : text.replaceAll("(?i)</?\\s*incident\\s*>", "[tag removed]");
     }
 
     private static boolean sameId(NamedReference ref, Long id) {

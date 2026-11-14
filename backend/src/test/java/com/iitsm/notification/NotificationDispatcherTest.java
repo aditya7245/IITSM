@@ -16,7 +16,7 @@ class NotificationDispatcherTest {
         RuntimeException failure;
 
         FakeNotificationService() {
-            super(null, null, null);
+            super(null, null, null, null);
         }
 
         @Override

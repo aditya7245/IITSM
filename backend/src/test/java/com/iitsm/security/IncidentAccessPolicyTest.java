@@ -129,9 +129,9 @@ class IncidentAccessPolicyTest {
     // ---- internal notes ----
 
     @Test
-    void theAssigneeAndAdminsMayAddNotes() {
-        assertAllowed(u -> policy.requireAssigneeOrAdmin(u, incident), assignee, admin, manager);
-        assertRefused(u -> policy.requireAssigneeOrAdmin(u, incident), reporter, lead, otherTech, otherEmployee);
+    void theAssigneeTheirTeamLeadAndAdminsMayAddNotes() {
+        assertAllowed(u -> policy.requireNoteAuthor(u, incident), assignee, lead, admin, manager);
+        assertRefused(u -> policy.requireNoteAuthor(u, incident), reporter, otherLead, otherTech, otherEmployee);
     }
 
     // ---- reporter actions: verify, reopen, answer info, feedback ----

@@ -32,7 +32,7 @@ export default function UsersPage() {
 
       {creating && <CreateUserForm teams={teams.data || []} onCancel={() => setCreating(false)}
         onDone={(u) => done(`Created ${u.fullName} (${label(u.role)}).`)} />}
-      {editing && <EditUserForm user={editing} isMe={editing.id === me.id} onCancel={() => setEditing(null)}
+      {editing && <EditUserForm key={editing.id} user={editing} isMe={editing.id === me.id} onCancel={() => setEditing(null)}
         onDone={(msg) => done(msg)} />}
 
       <div className="filters">

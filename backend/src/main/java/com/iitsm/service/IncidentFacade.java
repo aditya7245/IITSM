@@ -10,6 +10,7 @@ import com.iitsm.dto.CategorySuggestionResponse;
 import com.iitsm.dto.CommentResponse;
 import com.iitsm.dto.CreateIncidentRequest;
 import com.iitsm.dto.CreateIncidentResponse;
+import com.iitsm.domain.incident.IncidentStatus;
 import com.iitsm.dto.FeedbackResponse;
 import com.iitsm.dto.IncidentActionRequests;
 import com.iitsm.dto.IncidentDetailResponse;
@@ -40,6 +41,8 @@ public class IncidentFacade {
 
     static final int SUGGESTIONS = 3;
     static final int RECOMMENDATIONS = 3;
+    private static final java.util.Set<IncidentStatus> MARKABLE_AS_DUPLICATE = java.util.EnumSet.of(
+            IncidentStatus.NEW, IncidentStatus.CLASSIFIED, IncidentStatus.ASSIGNED, IncidentStatus.ACKNOWLEDGED);
 
     private final CurrentUserService currentUser;
     private final IncidentService incidentService;
@@ -53,12 +56,14 @@ public class IncidentFacade {
     private final CategorySuggester suggester;
     private final IncidentAccessPolicy access;
     private final ResponseMapper mapper;
+    private final DuplicateDetectionService duplicateDetection;
 
     public IncidentFacade(CurrentUserService currentUser, IncidentService incidentService,
                           IncidentCommentService commentService, FeedbackService feedbackService,
                           AssignmentService assignment, AuditService auditService, IncidentRepository incidents,
                           FeedbackRepository feedbacks, CategoryRepository categories, CategorySuggester suggester,
-                          IncidentAccessPolicy access, ResponseMapper mapper) {
+                          IncidentAccessPolicy access, ResponseMapper mapper,
+                          DuplicateDetectionService duplicateDetection) {
         this.currentUser = currentUser;
         this.incidentService = incidentService;
         this.commentService = commentService;
@@ -71,6 +76,7 @@ public class IncidentFacade {
         this.suggester = suggester;
         this.access = access;
         this.mapper = mapper;
+        this.duplicateDetection = duplicateDetection;
     }
 
     // ------------------------------------------------------------------ reporting and reading
@@ -79,7 +85,14 @@ public class IncidentFacade {
         User actor = currentUser.requireUser();
         CreateIncidentCommand command = new CreateIncidentCommand(request.title(), request.description(),
                 request.categoryId(), request.serviceId(), request.impact(), request.urgency(), request.affectedUsers());
-        return mapper.toCreateResponse(incidentService.create(command, actor));
+        CreateIncidentResult result = incidentService.create(command, actor);
+        // Possible duplicates are only shown if the reporter may open them; otherwise an employee would learn the
+        // titles of other people's incidents. Staff can see every candidate later through similar(id).
+        List<DuplicateCandidate> visible = result.possibleDuplicates().stream()
+                .filter(candidate -> incidents.findById(candidate.id())
+                        .map(other -> access.canView(actor, other)).orElse(false))
+                .toList();
+        return mapper.toCreateResponse(new CreateIncidentResult(result.incident(), visible));
     }
 
     public IncidentDetailResponse get(Long id) {
@@ -143,6 +156,19 @@ public class IncidentFacade {
     public List<TechnicianSummaryResponse> recommendations(Long id) {
         Incident incident = load(id);
         return assignment.recommend(incident, RECOMMENDATIONS).stream().map(mapper::toTechnician).toList();
+    }
+
+    /**
+     * Open incidents on the same service that look like the same problem (admins only), so the admin can mark
+     * the duplicate. Empty for incidents that can no longer be marked.
+     */
+    public List<DuplicateCandidate> similar(Long id) {
+        access.requireAdmin(currentUser.requireUser());
+        Incident incident = load(id);
+        if (!MARKABLE_AS_DUPLICATE.contains(incident.getStatus())) {
+            return List.of();
+        }
+        return duplicateDetection.findCandidates(incident);
     }
 
     // ------------------------------------------------------------------ comments, feedback, history

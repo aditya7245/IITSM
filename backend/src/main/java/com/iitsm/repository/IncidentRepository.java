@@ -17,6 +17,14 @@ import java.util.Optional;
 public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSpecificationExecutor<Incident> {
     Optional<Incident> findByIncidentNumber(String incidentNumber);
 
+    /**
+     * Makes technician assignment one-at-a-time across the whole system: a PostgreSQL advisory lock that lasts
+     * until the current transaction commits or rolls back. Without it, two incidents reported at the same moment
+     * could both see a technician with one free slot and both be given to them.
+     */
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(7240001)) AS assignment_lock", nativeQuery = true)
+    int lockAssignments();
+
     /** How many incidents with one of the given statuses are assigned to a technician (their workload). */
     long countByAssigneeIdAndStatusIn(Long assigneeId, Collection<IncidentStatus> statuses);
 

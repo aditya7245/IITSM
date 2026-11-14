@@ -11,6 +11,7 @@ import com.iitsm.exception.AssistantUnavailableException;
 import com.iitsm.exception.IitsmException;
 import com.iitsm.exception.InvalidInputException;
 import com.iitsm.security.CurrentUserService;
+import com.iitsm.security.RateLimiter;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +31,7 @@ import java.util.List;
 public class AssistantFacade {
 
     static final String GUIDE_RESOURCE = "assistant/app-guide.md";
+    static final int QUESTIONS_PER_MINUTE = 20;
 
     private final AssistantProperties props;
     private final CurrentUserService currentUser;
@@ -36,6 +39,8 @@ public class AssistantFacade {
     private final LlmClient llm;
     private final Clock clock;
     private final AssistantPromptBuilder prompts;
+    /** Each question costs money at the AI provider, so one user may ask at most this many per minute. */
+    private final RateLimiter questionsPerUser;
 
     public AssistantFacade(AssistantProperties props, CurrentUserService currentUser, IncidentFacade incidents,
                            LlmClient llm, Clock clock) {
@@ -45,6 +50,8 @@ public class AssistantFacade {
         this.llm = llm;
         this.clock = clock;
         this.prompts = new AssistantPromptBuilder(loadGuide());
+        this.questionsPerUser = new RateLimiter(QUESTIONS_PER_MINUTE, Duration.ofMinutes(1), clock,
+                "questions to the AI guide");
     }
 
     public AssistantDtos.StatusResponse status() {
@@ -56,6 +63,7 @@ public class AssistantFacade {
         if (!props.enabled()) {
             throw new AssistantUnavailableException("The AI guide is not configured on this server");
         }
+        questionsPerUser.acquire(String.valueOf(user.getId()));
         List<AssistantDtos.Turn> turns = request.messages();
         if (!ChatMessage.USER.equals(turns.get(turns.size() - 1).role())) {
             throw new InvalidInputException("The last message must be the user's question");

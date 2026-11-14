@@ -54,7 +54,7 @@ public class IncidentCommentService {
     @Transactional
     public IncidentComment addNote(Long incidentId, String body, User actor) {
         Incident incident = load(incidentId);
-        access.requireAssigneeOrAdmin(actor, incident);
+        access.requireNoteAuthor(actor, incident);
         requireNotFinished(incident);
         return comments.save(new IncidentComment(incident, actor, CommentType.NOTE, body));
     }
