@@ -1,0 +1,46 @@
+@startuml 13-activity-sla-escalation
+!include _style.iuml
+title SLA monitoring and automatic escalation (every scheduler run)
+
+start
+:SlaMonitorScheduler fires (@Scheduled);
+:Read the clock once;
+:Load every open incident with a priority;
+repeat
+  :SlaEvaluator.evaluate(incident, now)\n(deadlines pushed later by paused time);
+  if (deadline passed?) then (yes)
+    #FBE9E9:status = VIOLATED;
+  elseif (≥ 80 % of allowed time used?) then (yes)
+    #FFF4DC:status = AT_RISK;
+  else (no)
+    :status = ON_TRACK;
+  endif
+  if (more serious than stored status?) then (yes)
+    :incident.raiseSlaStatus(new);\npublish SLA_WARNING / SLA_VIOLATED;
+  else (no)
+  endif
+repeat while (more incidents?) is (yes)
+-> no;
+
+:EscalationScheduler fires;
+repeat
+  if (P1 and still ASSIGNED\n(not acknowledged)?) then (yes)
+    if (next level due?\nlevel 1 at response deadline,\n+1 level timeout each after) then (yes)
+      :incrementEscalationLevel();
+      switch (level)
+      case (1)
+        :alert assignee's team lead;
+      case (2)
+        :alert administrators;
+      case (3)
+        :alert IT managers;
+      endswitch
+      :publish ESCALATED (audit + notify);
+    else (no)
+    endif
+  else (no)
+  endif
+repeat while (more P1 incidents?) is (yes)
+-> no;
+stop
+@enduml

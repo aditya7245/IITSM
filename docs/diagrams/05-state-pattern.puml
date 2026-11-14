@@ -1,0 +1,53 @@
+@startuml 05-state-pattern
+!include _style.iuml
+title State pattern: one class per incident status
+
+interface IncidentState {
+  + status() : IncidentStatus
+  + allowedNext() : Set<IncidentStatus>
+  + canMoveTo(target) : boolean
+}
+abstract class AbstractIncidentState {
+  - status : IncidentStatus
+  - allowedNext : Set<IncidentStatus>
+  # AbstractIncidentState(status, allowedNext...)
+}
+class IncidentStates <<registry>> {
+  - STATES : EnumMap<IncidentStatus, IncidentState>
+  + {static} of(status) : IncidentState
+}
+class IncidentStateMachine {
+  + {static} canTransition(from, to) : boolean
+  + {static} requireTransition(from, to)
+}
+class Incident {
+  - status : IncidentStatus
+  + acknowledge(now)
+  + resolve(text, now)
+  ...
+}
+class InvalidStateTransitionException
+
+IncidentState <|.. AbstractIncidentState
+AbstractIncidentState <|-- NewState
+AbstractIncidentState <|-- ClassifiedState
+AbstractIncidentState <|-- AssignedState
+AbstractIncidentState <|-- AcknowledgedState
+AbstractIncidentState <|-- InProgressState
+AbstractIncidentState <|-- PendingInfoState
+AbstractIncidentState <|-- ResolvedState
+AbstractIncidentState <|-- VerifiedState
+AbstractIncidentState <|-- ClosedState
+AbstractIncidentState <|-- CancelledState
+AbstractIncidentState <|-- DuplicateState
+
+IncidentStates o--> "11" IncidentState
+IncidentStateMachine ..> IncidentStates : looks up
+Incident ..> IncidentStateMachine : every move goes through
+IncidentStateMachine ..> InvalidStateTransitionException : throws
+
+note bottom of NewState
+  NewState() { super(NEW, CLASSIFIED, CANCELLED, DUPLICATE); }
+  Adding a status = add one class; nothing else changes.
+end note
+@enduml

@@ -1,0 +1,44 @@
+@startuml 01-architecture
+!include _style.iuml
+title I-ITSM system architecture (layered monolith)
+skinparam nodesep 25
+skinparam ranksep 45
+
+actor "Employee" as emp
+actor "Technician /\nTeam lead" as tech
+actor "Administrator /\nIT manager" as adm
+
+package "Browser" {
+  component "React 18 SPA (Vite)\nreact-router · axios · recharts\nJWT kept in localStorage" as spa
+}
+
+package "Spring Boot 3.3 backend (Java 21)" {
+  component "Security filter chain\nJwtAuthenticationFilter\nrole checks (@PreAuthorize)" as sec
+  component "REST controllers\n(10 controllers, DTO records)" as ctl
+  component "Facades & services\nIncidentService · AssignmentService\nSlaMonitorService · EscalationService\nDuplicateDetection · CategorySuggester" as svc
+  component "Domain model\nIncident + State pattern\nUser hierarchy · SLA evaluator\nStrategies (priority, assignment, similarity)" as dom
+  component "Observers\nAuditObserver (1)\nNotificationObserver (2)" as obs
+  component "Notification channels\nInAppChannel · EmailChannel\n(NotificationChannelFactory)" as chan
+  component "Repositories\nSpring Data JPA + Specifications" as repo
+  component "Schedulers\nSLA monitor · Escalation\n(@Scheduled)" as sched
+}
+
+database "PostgreSQL 16\n(Flyway migrations V1–V5)" as db
+component "SMTP server\n(Mailpit in development)" as smtp
+
+emp --> spa
+tech --> spa
+adm --> spa
+spa --> sec : HTTPS + JSON\nAuthorization: Bearer JWT
+sec --> ctl
+ctl --> svc
+svc --> dom
+svc --> repo
+svc --> obs : publish IncidentEvent
+obs --> chan
+obs --> repo : audit_logs
+chan --> repo : notifications
+chan --> smtp : e-mail
+repo --> db : JDBC / Hibernate
+sched --> svc : runOnce()
+@enduml

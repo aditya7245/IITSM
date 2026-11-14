@@ -1,0 +1,111 @@
+@startuml 04-class-domain
+!include _style.iuml
+title Incident domain model (associations, composition, aggregation)
+
+class Incident {
+  - incidentNumber : String
+  - title : String
+  - description : String
+  - impact : short
+  - urgency : short
+  - affectedUsers : int
+  - priorityScore : Integer
+  - priority : Priority
+  - status : IncidentStatus
+  - slaStatus : SlaStatus
+  - responseDeadline : Instant
+  - resolutionDeadline : Instant
+  - slaPausedAt : Instant
+  - slaPausedSeconds : long
+  - escalationLevel : short
+  - resolution : String
+  --
+  + classify(p, score, respondBy, resolveBy)
+  + assignTo(t : Technician)
+  + acknowledge(now) / startProgress()
+  + requestInfo(now) / receiveInfo(now)
+  + resolve(text, now) / verify() / reopen()
+  + close(now) / cancel()
+  + markDuplicateOf(original)
+  + changePriority(...)
+  + raiseSlaStatus(s) : boolean
+  + incrementEscalationLevel()
+}
+
+abstract class User
+class Technician
+class ITService {
+  - name : String
+  - businessCriticality : short (1..5)
+  - active : boolean
+}
+class Category {
+  - name : String
+  - keywords : String
+  - active : boolean
+}
+class Skill
+class SlaPolicy {
+  - priority : Priority
+  - responseMinutes : int
+  - resolutionMinutes : int
+}
+class IncidentComment {
+  - type : CommentType
+  - body : String
+}
+class AuditLog {
+  - action : String
+  - previousState : String
+  - newState : String
+  - description : String
+}
+class Notification {
+  - eventType : String
+  - message : String
+  - read : boolean
+}
+class Feedback {
+  - rating : short (1..5)
+  - comments : String
+}
+enum Priority {
+  P1
+  P2
+  P3
+  P4
+  + bump() : Priority
+}
+enum IncidentStatus {
+  NEW … CLOSED, CANCELLED, DUPLICATE
+  + isTerminal() : boolean
+  + countsTowardWorkload() : boolean
+}
+enum SlaStatus {
+  ON_TRACK
+  AT_RISK
+  VIOLATED
+}
+enum CommentType {
+  NOTE
+  INFO_REQUEST
+  INFO_RESPONSE
+}
+
+User <|-- Technician
+Incident "0..*" --> "1" User : reporter
+Incident "0..*" --> "0..1" Technician : assignee
+Incident "0..*" --> "1" ITService : affected service
+Incident "0..*" --> "0..1" Category
+Incident "0..*" --> "0..1" Incident : duplicateOf
+Category "0..*" --> "0..1" Skill : requires
+SlaPolicy "0..*" --> "0..1" ITService : override for
+Incident "1" *-- "0..*" IncidentComment : thread
+Incident "1" *-- "0..1" Feedback
+Incident "1" o-- "0..*" AuditLog : history
+Incident "1" o-- "0..*" Notification
+Incident ..> Priority
+Incident ..> IncidentStatus
+Incident ..> SlaStatus
+IncidentComment ..> CommentType
+@enduml

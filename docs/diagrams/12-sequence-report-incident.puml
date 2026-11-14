@@ -1,0 +1,48 @@
+@startuml 12-sequence-report-incident
+!include _style.iuml
+title Reporting an incident (workflow 1)
+autonumber "<b>0."
+
+actor Employee as E
+participant "React app" as UI
+participant "JwtAuthentication\nFilter" as F
+participant IncidentController as C
+participant IncidentService as S
+participant IncidentFactory as IF
+participant "PriorityCalculator\n(strategy)" as P
+participant SlaPolicyService as SLA
+participant "AssignmentService\n(strategy)" as A
+participant "DuplicateDetection\nService" as D
+participant "IncidentEvent\nPublisher" as EP
+database PostgreSQL as DB
+
+E -> UI : fill form, Submit
+UI -> F : POST /api/incidents (Bearer JWT)
+F -> C : authenticated user
+C -> S : create(command, reporter)
+S -> IF : create(command, reporter)
+IF --> S : Incident (NEW, INC1001)
+S -> EP : CREATED
+S -> P : calculate(impact, urgency, criticality, users)
+P --> S : score 45 → P1
+S -> SLA : findPolicy(P1, service)
+SLA --> S : respond 5 min · resolve 30 min
+S -> S : incident.classify(P1, 45, deadlines)
+S -> EP : CLASSIFIED
+S -> A : autoAssign(incident)
+A --> S : Kiran Tech (best skill)
+S -> S : incident.assignTo(Kiran)
+S -> EP : ASSIGNED
+S -> DB : save incident
+S -> D : findCandidates(incident)
+D --> S : similar open incidents
+S --> C : incident + possible duplicates
+C --> UI : 201 Created (JSON)
+UI --> E : "INC1001 · P1 · assigned to Kiran"
+
+group after commit
+  EP -> DB : audit_logs rows (AuditObserver)
+  EP -> DB : notifications (in-app)
+  EP ->] : e-mail to assignee via SMTP
+end
+@enduml

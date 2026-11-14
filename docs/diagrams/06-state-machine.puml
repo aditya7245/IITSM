@@ -1,0 +1,47 @@
+@startuml 06-state-machine
+!include _style.iuml
+title Incident lifecycle (enforced by IncidentStateMachine)
+hide empty description
+skinparam ranksep 40
+
+state NEW
+state CLASSIFIED : priority + SLA deadlines set
+state ASSIGNED : technician chosen by strategy
+state ACKNOWLEDGED : response time met
+state IN_PROGRESS
+state PENDING_INFO #FFF4DC : SLA clock paused
+state RESOLVED : resolution recorded
+state VERIFIED : reporter confirms
+state CLOSED #E5F4E5
+state CANCELLED #ECEBE7
+state DUPLICATE #ECEBE7
+
+[*] --> NEW : employee reports
+NEW --> CLASSIFIED : priority calculated
+CLASSIFIED --> ASSIGNED : auto / admin assigns
+ASSIGNED --> ACKNOWLEDGED : technician
+ACKNOWLEDGED --> IN_PROGRESS : start work
+IN_PROGRESS --> PENDING_INFO : request info
+PENDING_INFO --> IN_PROGRESS : reporter answers
+IN_PROGRESS --> RESOLVED : resolve
+RESOLVED --> VERIFIED : reporter verifies
+RESOLVED --> IN_PROGRESS : reopen
+VERIFIED --> CLOSED : feedback / admin close
+CLOSED --> [*]
+
+NEW --> CANCELLED
+CLASSIFIED --> CANCELLED
+ASSIGNED --> CANCELLED : reporter / admin
+NEW --> DUPLICATE
+CLASSIFIED --> DUPLICATE
+ASSIGNED --> DUPLICATE
+ACKNOWLEDGED --> DUPLICATE : admin marks
+CANCELLED --> [*]
+DUPLICATE --> [*]
+
+note right of NEW
+  Any other move, e.g. NEW → CLOSED,
+  throws InvalidStateTransitionException
+  (HTTP 409 through the API).
+end note
+@enduml

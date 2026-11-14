@@ -1,0 +1,94 @@
+@startuml 03-class-users
+!include _style.iuml
+title User hierarchy (inheritance, abstraction, polymorphism)
+
+abstract class BaseEntity {
+  - id : Long
+  - createdAt : Instant
+  - updatedAt : Instant
+  + getId() : Long
+  + equals(o) : boolean
+  + hashCode() : int
+}
+
+abstract class User {
+  - email : String
+  - passwordHash : String
+  - fullName : String
+  - active : boolean
+  + {abstract} getRole() : Role
+  + changePasswordHash(hash)
+  + rename(fullName)
+  + activate() / deactivate()
+}
+
+class Employee {
+  - department : String
+  + getRole() : Role
+  + changeDepartment(d)
+}
+class Technician {
+  - maxWorkload : int
+  - available : boolean
+  - experienceYears : int
+  + getRole() : Role
+  + hasCapacity(active) : boolean
+  + requireCapacity(active)
+  + moveToTeam(team)
+}
+class TeamLead {
+  + getRole() : Role
+}
+class Administrator {
+  + getRole() : Role
+}
+class ITManager {
+  + getRole() : Role
+}
+class Team {
+  - name : String
+  + assignLead(lead : TeamLead)
+}
+enum Role {
+  EMPLOYEE
+  TECHNICIAN
+  TEAM_LEAD
+  ADMINISTRATOR
+  IT_MANAGER
+  + authorities() : List<String>
+}
+class TechnicianSkill {
+  - proficiency : short (1..5)
+}
+class Skill {
+  - name : String
+}
+class UserFactory <<Factory>> {
+  + create(cmd : CreateUserCommand) : User
+}
+
+BaseEntity <|-- User
+BaseEntity <|-- Team
+User <|-- Employee
+User <|-- Technician
+Technician <|-- TeamLead
+User <|-- Administrator
+Administrator <|-- ITManager
+User ..> Role : getRole()
+Technician "0..*" --o "0..1" Team : member of >
+Team "0..1" --> "0..1" TeamLead : lead
+Technician "1" *-- "0..*" TechnicianSkill
+TechnicianSkill "0..*" --> "1" Skill
+UserFactory ..> User : <<creates>>
+
+note right of User
+  Single-table inheritance: one users table,
+  a role column says which subclass a row is.
+  Each subclass answers getRole() itself
+  (polymorphism instead of if/else).
+end note
+note bottom of Role
+  TEAM_LEAD also carries ROLE_TECHNICIAN;
+  IT_MANAGER also carries ROLE_ADMIN.
+end note
+@enduml

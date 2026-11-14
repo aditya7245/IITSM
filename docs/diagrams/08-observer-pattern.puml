@@ -1,0 +1,78 @@
+@startuml 08-observer-pattern
+!include _style.iuml
+title Observer, Factory and Adapter: events, audit and notifications
+
+class IncidentService {
+  + acknowledge(id, actor)
+  + resolve(id, text, actor)
+  ...
+  - saveAndPublish(type, incident, actor, previous, text)
+}
+class IncidentEventPublisher <<subject>> {
+  - observers : List<IncidentObserver>
+  + publish(event : IncidentEvent)
+}
+interface IncidentObserver {
+  + onEvent(event : IncidentEvent)
+}
+class AuditObserver <<@Order(1)>> {
+  writes one audit_logs row
+}
+class NotificationObserver <<@Order(2)>> {
+  + afterCommit()
+  - dispatchSafely(request)
+}
+class IncidentEvent <<record>> {
+  type : IncidentEventType
+  incident : Incident
+  actor : User
+  previous : IncidentStatus
+  current : IncidentStatus
+  description : String
+  at : Instant
+  explicitRecipientIds : List<Long>
+}
+class NotificationRules {
+  event → audiences + e-mail mode
+}
+class NotificationDispatcher {
+  + dispatch(request)
+}
+class NotificationChannelFactory <<Factory>> {
+  + get(type : ChannelType) : NotificationChannel
+}
+interface NotificationChannel {
+  + type() : ChannelType
+  + send(message : NotificationMessage)
+}
+class InAppChannel {
+  saves a Notification row
+}
+class EmailChannel <<Adapter>> {
+  - mailSender : JavaMailSender
+}
+class JavaMailSender <<Spring / SMTP>>
+enum ChannelType {
+  IN_APP
+  EMAIL
+}
+
+IncidentService --> IncidentEventPublisher : publish
+IncidentEventPublisher o--> "*" IncidentObserver
+IncidentObserver <|.. AuditObserver
+IncidentObserver <|.. NotificationObserver
+IncidentEventPublisher ..> IncidentEvent
+NotificationObserver --> NotificationRules : who should hear?
+NotificationObserver --> NotificationDispatcher : after commit
+NotificationDispatcher --> NotificationChannelFactory
+NotificationChannelFactory ..> NotificationChannel : returns
+NotificationChannel <|.. InAppChannel
+NotificationChannel <|.. EmailChannel
+EmailChannel --> JavaMailSender : adapts
+NotificationChannel ..> ChannelType
+
+note bottom of NotificationChannel
+  A new mechanism (SMS, push, Slack) is one new class
+  implementing NotificationChannel + one ChannelType value.
+end note
+@enduml

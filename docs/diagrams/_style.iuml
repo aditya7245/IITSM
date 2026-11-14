@@ -1,0 +1,82 @@
+' Shared look for every I-ITSM diagram: flat, light, one accent colour.
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam defaultFontColor #1F2933
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam ArrowColor #52606D
+skinparam ArrowThickness 1.2
+skinparam ArrowFontSize 11
+skinparam ArrowFontColor #52606D
+skinparam padding 4
+skinparam nodesep 40
+skinparam ranksep 50
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam titleFontColor #102A43
+
+skinparam class {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+  BorderThickness 1.3
+  HeaderBackgroundColor #DCEAFB
+  AttributeFontSize 12
+  AttributeFontColor #334E68
+  StereotypeFontColor #2A78D6
+  FontStyle bold
+}
+skinparam stereotypeCBackgroundColor #2A78D6
+skinparam stereotypeIBackgroundColor #1BAF7A
+skinparam stereotypeABackgroundColor #6250D6
+skinparam stereotypeEBackgroundColor #EDA100
+skinparam package {
+  BackgroundColor #FBFBFA
+  BorderColor #BCCCDC
+  FontColor #486581
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF8E6
+  BorderColor #EDA100
+  FontSize 12
+}
+skinparam component {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+}
+skinparam rectangle {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+}
+skinparam database {
+  BackgroundColor #EAF7F1
+  BorderColor #1BAF7A
+}
+skinparam actor {
+  BackgroundColor #DCEAFB
+  BorderColor #2A78D6
+}
+skinparam usecase {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+}
+skinparam state {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+  FontStyle bold
+}
+skinparam sequence {
+  LifeLineBorderColor #9FB3C8
+  ParticipantBackgroundColor #DCEAFB
+  ParticipantBorderColor #2A78D6
+  ActorBackgroundColor #DCEAFB
+  ActorBorderColor #2A78D6
+  GroupBorderColor #BCCCDC
+  GroupBackgroundColor #F0F4F8
+}
+skinparam entity {
+  BackgroundColor #F5F9FF
+  BorderColor #2A78D6
+}
+hide empty members

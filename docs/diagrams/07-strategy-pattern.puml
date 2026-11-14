@@ -1,0 +1,69 @@
+@startuml 07-strategy-pattern
+!include _style.iuml
+title Strategy pattern: interchangeable algorithms
+
+package "Technician assignment" {
+  interface AssignmentStrategy {
+    + name() : String
+    + rank(eligible, skillRequired) : List<TechnicianCandidate>
+    + recordAssigned(t : Technician)
+  }
+  class SkillBasedStrategy {
+    best proficiency, then least busy,
+    then most experienced
+  }
+  class LoadBasedStrategy {
+    least busy, then most experienced
+  }
+  class RoundRobinStrategy {
+    - lastAssignedId : Long
+    takes turns by id
+  }
+  class AssignmentService {
+    + autoAssign(incident) : Optional<Technician>
+    + recommend(incident, limit) : List<Technician>
+    + assignManually(incident, techId) : Technician
+  }
+  class TechnicianCandidate <<record>> {
+    technician : Technician
+    activeIncidents : int
+    proficiency : int
+  }
+  AssignmentStrategy <|.. SkillBasedStrategy
+  AssignmentStrategy <|.. LoadBasedStrategy
+  AssignmentStrategy <|.. RoundRobinStrategy
+  AssignmentService o--> "3" AssignmentStrategy : picks by\nsystem_config\n"assignment.strategy"
+  AssignmentStrategy ..> TechnicianCandidate
+}
+
+package "Priority" {
+  interface PriorityCalculator {
+    + calculate(impact, urgency, criticality,\n  affectedUsers, bumpThreshold) : PriorityResult
+  }
+  class ScoreBasedPriorityCalculator {
+    score = impact × urgency × criticality
+    ≥27 P1 · ≥12 P2 · ≥5 P3 · else P4
+    ≥100 users → one tier higher
+  }
+  class PriorityResult <<record>> {
+    score : int
+    priority : Priority
+  }
+  PriorityCalculator <|.. ScoreBasedPriorityCalculator
+  PriorityCalculator ..> PriorityResult
+}
+
+package "Duplicate detection" {
+  interface SimilarityStrategy {
+    + similarity(a, b) : double
+  }
+  class JaccardSimilarityStrategy {
+    |A ∩ B| / |A ∪ B| of word sets
+  }
+  class DuplicateDetectionService {
+    threshold 0.3 · window 24 h · same service
+  }
+  SimilarityStrategy <|.. JaccardSimilarityStrategy
+  DuplicateDetectionService --> SimilarityStrategy
+}
+@enduml

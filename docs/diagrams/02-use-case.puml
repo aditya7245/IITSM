@@ -1,0 +1,83 @@
+@startuml 02-use-case
+!include _style.iuml
+title I-ITSM use cases
+left to right direction
+skinparam nodesep 12
+skinparam ranksep 90
+
+actor Employee as E
+actor Technician as T
+actor "Team lead" as L
+actor Administrator as A
+actor "IT manager" as M
+actor "System scheduler" as S <<system>>
+
+L -|> T
+M -|> A
+
+rectangle "I-ITSM" {
+  usecase "Register / log in" as UC1
+  usecase "Report an incident" as UC2
+  usecase "Get category suggestion" as UC2a
+  usecase "See possible duplicates" as UC2b
+  usecase "Track my incidents" as UC3
+  usecase "Answer information request" as UC4
+  usecase "Verify fix or reopen" as UC5
+  usecase "Give feedback" as UC6
+  usecase "Cancel incident" as UC7
+
+  usecase "View assigned incidents\nand workload" as UC10
+  usecase "Acknowledge / start work" as UC11
+  usecase "Request information\n(SLA pauses)" as UC12
+  usecase "Add investigation note" as UC13
+  usecase "Resolve incident" as UC14
+  usecase "Set availability" as UC15
+  usecase "See team's incidents" as UC16
+
+  usecase "Search & filter incidents" as UC20
+  usecase "Reassign / change priority /\nmark duplicate / close" as UC21
+  usecase "Manage users, teams,\ntechnicians & skills" as UC22
+  usecase "Configure services, categories,\nSLA policies, strategy" as UC23
+  usecase "View dashboard & reports" as UC24
+  usecase "View audit log" as UC25
+
+  usecase "Receive notifications\n(in-app + e-mail)" as UC30
+  usecase "Monitor SLA deadlines" as UC40
+  usecase "Escalate unacknowledged P1" as UC41
+}
+
+E --> UC1
+E --> UC2
+E --> UC3
+E --> UC4
+E --> UC5
+E --> UC6
+E --> UC7
+E --> UC30
+UC2 ..> UC2a : <<include>>
+UC2 ..> UC2b : <<include>>
+
+T --> UC1
+T --> UC10
+T --> UC11
+T --> UC12
+T --> UC13
+T --> UC14
+T --> UC15
+T --> UC30
+L --> UC16
+
+A --> UC1
+A --> UC20
+A --> UC21
+A --> UC22
+A --> UC23
+A --> UC24
+A --> UC25
+A --> UC7
+A --> UC30
+
+S --> UC40
+S --> UC41
+UC41 ..> UC30 : <<include>>
+@enduml

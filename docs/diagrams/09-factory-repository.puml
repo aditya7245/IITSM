@@ -1,0 +1,68 @@
+@startuml 09-factory-repository
+!include _style.iuml
+allowmixing
+title Factory and Repository patterns, layered services
+
+package "controller" {
+  class IncidentController
+}
+package "service" {
+  class IncidentSearchFacade {
+    builds Specification from filters
+  }
+  class IncidentFacade {
+    turns entities into DTO records
+  }
+  class IncidentService {
+    lifecycle actions + events
+  }
+  class IncidentFactory <<Factory>> {
+    + create(cmd, reporter) : Incident
+    validates title, description,
+    impact, urgency, service, category
+  }
+  class IncidentNumberGenerator {
+    + next() : String (INC1001, INC1002…)
+  }
+  class SlaPolicyService {
+    + findPolicy(priority, service) : SlaPolicy
+  }
+}
+package "repository" {
+  interface IncidentRepository {
+    JpaRepository<Incident, Long>
+    JpaSpecificationExecutor<Incident>
+    + countByAssigneeIdAndStatusIn(...)
+  }
+  class IncidentSpecifications {
+    + {static} visibleTo(user)
+    + {static} hasStatus(s) / hasPriority(p)
+    + {static} inCategory / onService
+    + {static} assignedTo / hasSlaStatus
+    + {static} createdFrom / createdTo
+  }
+  interface UserRepository
+  interface SlaPolicyRepository
+  interface AuditLogRepository
+}
+database PostgreSQL
+
+IncidentController --> IncidentFacade
+IncidentFacade --> IncidentService
+IncidentService --> IncidentFactory : new incidents
+IncidentFactory --> IncidentNumberGenerator
+IncidentService --> SlaPolicyService
+IncidentService --> IncidentRepository
+IncidentSearchFacade ..> IncidentSpecifications : search filters
+SlaPolicyService --> SlaPolicyRepository
+IncidentRepository --> PostgreSQL
+UserRepository --> PostgreSQL
+SlaPolicyRepository --> PostgreSQL
+AuditLogRepository --> PostgreSQL
+
+note right of IncidentRepository
+  Repository pattern: services ask for objects,
+  Spring Data writes the SQL. Swapping the
+  database does not touch business code.
+end note
+@enduml

@@ -2,7 +2,7 @@
 
 CS F213 OOP course project (due 22 Nov 2026). Employees report IT incidents; the system prioritizes them, assigns a technician, tracks SLA deadlines, sends notifications and keeps an audit trail.
 
-**Stack:** Java 21 · Spring Boot 3.3 (layered monolith) · PostgreSQL 16 · Flyway · Spring Data JPA · Spring Security + JWT · React (planned)
+**Stack:** Java 21 · Spring Boot 3.3 (layered monolith) · PostgreSQL 16 · Flyway · Spring Data JPA · Spring Security + JWT · React 18 + Vite
 
 **Contents:** [1. How to run everything](#1-how-to-run-everything) · [2. Build checklist](#2-build-checklist) · [3. Scaffold guide](#3-scaffold-guide-what-is-in-the-repo)
 
@@ -10,7 +10,7 @@ CS F213 OOP course project (due 22 Nov 2026). Employees report IT incidents; the
 
 # 1. How to run everything
 
-**Needs:** Java 21, Maven, Docker Desktop (running), Git.
+**Needs:** Java 21, Maven, Docker Desktop (running), Node.js 18 or newer, Git.
 
 ```bash
 git clone https://github.com/aditya7245/IITSM.git
@@ -20,8 +20,19 @@ cd backend
 mvn spring-boot:run                   # API on http://localhost:8080
 ```
 
+In a second terminal, start the web app:
+
+```bash
+cd frontend
+npm install                           # first time only
+npm run dev                           # app on http://localhost:5173
+```
+
+Open http://localhost:5173 and log in with a demo user (the login page has one-click buttons for them in development). The app talks to `http://localhost:8080`; to point it elsewhere, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_URL`. Keep port 5173: it is the origin the backend allows (`CORS_ORIGINS`).
+
 | What | URL |
 |---|---|
+| Web app | http://localhost:5173 |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | Health | http://localhost:8080/actuator/health |
 | Mailpit (caught emails) | http://localhost:8025 |
@@ -56,7 +67,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 49 of 53 (all of Phases 1 to 7).
+**Checklist items done:** 51 of 53 (Phases 1 to 7, plus 8.2 and 8.3).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -67,7 +78,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 5 REST API | 5.1 to 5.7 | all |
 | 6 Demo and tests | 6.1 to 6.3 | all |
 | 7 Frontend | 7.1 to 7.7 | all |
-| 8 Innovation and documents | 8.1 to 8.4 | none |
+| 8 Innovation and documents | 8.1 to 8.4 | 8.2, 8.3 done; 8.4 in progress; 8.1 not started |
 
 ### Rules for every item
 
@@ -403,17 +414,17 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
   **Details for Claude:** `GET /api/stream` returning an `SseEmitter`. Browsers cannot set headers on `EventSource`, so this one endpoint also accepts the JWT as a `?token=` query parameter (validated by the existing `JwtService`). A new observer (`@Order(3)`) pushes `notification` events to the affected users and `incident-changed` events to connected admins. The frontend bell and dashboard refresh on these events and keep polling as a fallback.
   *Done when:* a status change appears in a second browser session without a reload.
 
-- [ ] **8.2 Diagrams.** *Status: not started.*
+- [x] **8.2 Diagrams.** *Status: done. 13 PlantUML diagrams in `docs/diagrams/` (source `.puml` + PNG).*
   **In plain words:** The architecture, use case, class and database diagrams the course requires.
   **Details for Claude:** In `docs/`: architecture diagram (frontend, REST API, controller, service, repository, PostgreSQL, SMTP/Mailpit, schedulers), use case diagram (actors: employee, technician, team lead, administrator, IT manager, and the system scheduler), class diagram (user hierarchy, incident with its state classes, strategy interfaces and implementations, observer interface and implementations, notification channels, factories), and an ER diagram generated from `V1__baseline_schema.sql`.
   *Done when:* diagrams are committed as image or Mermaid files and match the code.
 
-- [ ] **8.3 Project report.** *Status: not started.*
+- [x] **8.3 Project report.** *Status: done. `docs/report/report.pdf` (LaTeX source `report.tex`; rebuild with `node make-tables.mjs` then `tectonic -X compile report.tex`).*
   **In plain words:** The written report covering problem, design, technology choices, database, testing and security.
   **Details for Claude:** Sections required by the spec: problem analysis, requirements, architecture, UML, technology stack, database design with sample data, testing, security considerations (list what is not covered: refresh tokens, rate limiting, account lockout, `localStorage` token storage). The Technology Selection Report answers all nine questions from the spec, including how the system would scale (stateless JWT, read replicas, a message queue for notifications, a scheduler lock).
   *Done when:* every section of the spec's Deliverables list has a matching section.
 
-- [ ] **8.4 Demo video.** *Status: not started.*
+- [ ] **8.4 Demo video.** *Status: in progress.*
   **In plain words:** The recorded demo you submit.
   **Details for Claude:** 15 to 20 minutes, three workflows from `docs/demo-script.md`, every member introduces themselves and explains a module; file named per the spec; upload before 22 Nov 2026.
   *Done when:* uploaded and the link confirmed.
@@ -430,6 +441,8 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
 6. **SLA clock starts at the incident's creation time** and pauses only in PENDING_INFO.
 7. **Duplicate similarity threshold lowered from 0.5 to 0.3** (migration V4). Short titles rarely reach 0.5 even for the same problem. Tune it in `system_config` if the demo data needs it.
 8. **Frontend is JavaScript, not TypeScript**, to reduce setup cost for a first project.
+9. **The team-lead switch got its own endpoint** for item 7.6: `GET`/`PUT /api/admin/config/team-lead-assignment` with body `{"enabled": true}` (admins only). It reads and writes the `assignment.auto.team.leads` setting from V5; tests are in `AdminTeamLeadSettingApiTest`.
+10. **One incident page serves every role.** `/incidents/:id` shows only the actions the viewer may take in the incident's current status (reporter, assignee or admin), so the employee, technician and admin detail views of 7.3 to 7.5 are the same page.
 
 
 ---
@@ -466,8 +479,8 @@ The scaffold is the **foundation only**. It contains:
 iitsm/
 ├── docker-compose.yml        Postgres + Mailpit
 ├── .env.example              Template for local settings
-├── docs/                     Reports, UML, ER diagrams
-├── frontend/                 React app (empty for now)
+├── docs/                     report/ (PDF), diagrams/ (UML), screenshots/, TEST_CASES.md
+├── frontend/                 React app (Vite): src/pages per role, src/components, src/api
 └── backend/
     ├── pom.xml               Maven dependencies and build config
     └── src/

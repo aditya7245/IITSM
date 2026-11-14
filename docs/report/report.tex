@@ -1,0 +1,559 @@
+% I-ITSM project report. Build: node make-tables.mjs && tectonic -X compile report.tex
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=2.2cm,top=2.4cm,bottom=2.4cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]
+\setmonofont{lmmono10-regular}[Extension=.otf,BoldFont=lmmonolt10-bold,Scale=0.95]
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage{amssymb}
+\newcommand{\yes}{\textcolor{accent}{$\checkmark$}}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{violet}{HTML}{6250D6}
+\definecolor{ink}{HTML}{102A43}
+\definecolor{muted}{HTML}{627D98}
+\definecolor{soft}{HTML}{F3F7FD}
+\definecolor{codebg}{HTML}{F6F8FB}
+
+\titleformat{\section}{\LARGE\bfseries\color{ink}}{\color{accent}\thesection}{0.6em}{}
+\titleformat{\subsection}{\Large\bfseries\color{ink}}{\color{accent}\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\large\bfseries\color{ink}}{}{0em}{}
+\titlespacing*{\section}{0pt}{18pt}{10pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlist{itemsep=2pt,topsep=3pt}
+\captionsetup{font=small,labelfont={bf,color=accent}}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{muted}I-ITSM · Project report}
+\fancyhead[R]{\small\color{muted}CS F213 / MAC F212 · Group N}
+\fancyfoot[C]{\small\color{muted}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\lstset{basicstyle=\ttfamily\small,backgroundcolor=\color{codebg},frame=single,rulecolor=\color{accent!30},
+  framesep=6pt,xleftmargin=6pt,xrightmargin=6pt,columns=fullflexible,keepspaces=true,breaklines=true,
+  keywordstyle=\color{violet}\bfseries,commentstyle=\color{muted}\itshape,stringstyle=\color{accent},
+  language=Java,morekeywords={record,var},showstringspaces=false,tabsize=4,aboveskip=6pt,belowskip=6pt}
+
+\newtcolorbox{keybox}[1]{colback=soft,colframe=accent!40,boxrule=0.6pt,arc=2mm,left=8pt,right=8pt,top=5pt,bottom=5pt,
+  title={#1},fonttitle=\bfseries\small,coltitle=ink,colbacktitle=accent!12}
+\newcommand{\fig}[3]{\begin{figure}[H]\centering\includegraphics[#1]{#2}\caption{#3}\end{figure}}
+\newcommand{\shot}[2]{\fig{width=\linewidth}{../screenshots/#1.png}{#2}}
+\newcommand{\diagram}[3]{\fig{#2}{../diagrams/#1.png}{#3}}
+
+\begin{document}
+
+% ============================================================== title page
+\begin{titlepage}
+\vspace*{2.2cm}
+{\color{accent}\rule{\linewidth}{1.4pt}}\par\vspace{16pt}
+{\fontsize{46}{50}\selectfont\bfseries\color{ink} I-ITSM}\par\vspace{8pt}
+{\LARGE Intelligent IT Service Management\\[2pt] \& Incident Resolution System}\par\vspace{18pt}
+{\Large\color{accent}\bfseries Project report}\par\vspace{16pt}
+{\color{accent}\rule{\linewidth}{1.4pt}}\par\vspace{26pt}
+{\large CS F213 / MAC F212 · Object-Oriented Programming\\ Semester I, 2026–2027\\[8pt] \textbf{Group N}}\par\vspace{26pt}
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Member} & \textbf{ID} & \textbf{Responsibility} \\ \midrule
+Member 1 & ID-1 & Frontend and user experience (React application, dashboard) \\
+Member 2 & ID-2 & Domain model and OOP design (user hierarchy, incident lifecycle, exceptions) \\
+Member 3 & ID-3 & Services, REST API, database and security \\
+Member 4 & ID-4 & Intelligent features and testing \\ \bottomrule
+\end{tabularx}
+\vfill
+{\small\color{muted} Source code: \texttt{github.com/aditya7245/IITSM} \hfill November 2026\\[2pt] Demo video: \texttt{N\_OOP\_S1\_2025-2026\_Project.mp4}}
+\end{titlepage}
+
+% ============================================================== abstract
+\section*{Abstract}
+When an IT service fails in a large organisation, incidents are usually reported by e-mail and telephone, prioritised by gut feeling, handed to whoever happens to be free, and forgotten once fixed. The result is slow response, missed service-level agreements (SLAs), duplicated effort and no reliable history.
+
+I-ITSM is a full-stack web application that manages the complete lifecycle of an IT incident: \emph{Report → Classify → Prioritise → Assign → Investigate → Resolve → Verify → Close}. It calculates priority from impact, urgency, business criticality and the number of affected users; assigns a technician with an interchangeable strategy (skill-based, load-based or round-robin); tracks response and resolution deadlines in the background, pausing the clock while waiting for the reporter; escalates unacknowledged critical incidents through three levels; detects likely duplicates; and notifies the right people in the application and by e-mail. Every action is recorded in an audit trail, and managers get a dashboard and nine search criteria.
+
+The backend is a layered Spring Boot 3.3 application in Java 21 over PostgreSQL 16; the frontend is a React 18 single-page application. The design is built around object-oriented principles (an abstract user hierarchy, encapsulated entities with intent methods, polymorphism, interfaces and composition) and six design patterns: State, Strategy, Observer, Factory, Adapter and Repository. The system is verified by 676 automated tests, 28 of which are documented as formal test cases.
+
+\tableofcontents
+\listoffigures
+\newpage
+
+% ============================================================== 1 problem
+\section{Problem analysis}
+\subsection{The problem}
+Modern organisations depend on IT services such as payment applications, e-mail, VPN gateways, databases and cloud platforms. When one fails, employees must report it and the IT team must identify, prioritise, assign, investigate, resolve and close the incident. Done manually this leads to:
+\begin{itemize}
+\item \textbf{Slow response and wrong priorities}: urgency is argued over e-mail instead of being calculated consistently.
+\item \textbf{Poor allocation}: work goes to whoever is free, not to the person with the right skill or spare capacity.
+\item \textbf{SLA violations}: nobody watches the clock, and violations are discovered afterwards, if at all.
+\item \textbf{Duplicate reports}: one outage produces many tickets that are worked independently.
+\item \textbf{Incomplete history}: it is impossible to reconstruct who did what and when, or to learn from past incidents.
+\item \textbf{No visibility}: managers cannot see workload, service health or SLA compliance.
+\end{itemize}
+
+\subsection{Stakeholders}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Stakeholder} & \textbf{Interest} \\ \midrule
+Employees / customers & Report problems quickly, know what is happening, get the service back. \\
+Technicians & Clear, prioritised work that matches their skills; information from the reporter when needed. \\
+Team leads & Visibility of their team's incidents; be alerted when a critical incident is ignored. \\
+Administrators & Configure services, categories, SLA policies, users and assignment rules; intervene on incidents. \\
+IT managers & SLA compliance, workload and service analysis; final escalation level. \\
+The organisation & Less downtime, measurable service quality, an audit trail for accountability. \\ \bottomrule
+\end{tabularx}
+
+\subsection{Proposed solution}
+A single web application, used by every role from a browser, with a REST API backend that automates the routine decisions: it classifies and prioritises each new incident, computes its SLA deadlines from configurable policies, assigns a suitable technician, monitors deadlines continuously, escalates when a critical incident is not acknowledged, warns about likely duplicates, notifies the people concerned, and records every change. Administrators can change the rules (SLA times, categories and their keywords, the assignment strategy) at runtime without code changes.
+
+\subsection{Assumptions}
+\begin{itemize}
+\item Every user has an account; employees may self-register, all other roles are created by an administrator.
+\item An incident concerns exactly one IT service and one category; the reporter chooses the category (the system suggests one).
+\item Impact and urgency are on a three-point scale (low, medium, high); business criticality of a service is 1–5.
+\item SLA time is wall-clock time (no business-hours calendar) and is paused only while waiting for the reporter.
+\item E-mail is sent through SMTP; in development a local catch-all server (Mailpit) receives it.
+\item Escalation informs people; it does not reassign the incident automatically.
+\end{itemize}
+
+% ============================================================== 2 requirements
+\section{Requirements specification}
+\subsection{Functional requirements}
+\begin{longtable}{@{}p{1.3cm}p{14.3cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Requirement} \\ \midrule \endhead
+\multicolumn{2}{@{}l}{\textbf{\color{accent}User management}} \\
+FR-01 & Users log in with e-mail and password; employees can register themselves. \\
+FR-02 & Administrators create, edit, deactivate users and reset passwords; manage teams and team leads. \\
+FR-03 & Administrators manage technicians' maximum workload, availability, experience, team and skills (proficiency 1–5). \\
+FR-04 & Technicians can mark themselves available or unavailable. \\
+\multicolumn{2}{@{}l}{\textbf{\color{accent}Incident management}} \\
+FR-05 & Employees report an incident with title, description, service, category, impact, urgency and affected users. \\
+FR-06 & The system suggests a category from the incident text. \\
+FR-07 & The system numbers the incident (INC1001, INC1002, …), calculates its priority and SLA deadlines, and assigns a technician. \\
+FR-08 & The system warns the reporter about likely duplicate open incidents. \\
+FR-09 & The assigned technician acknowledges, starts work, adds internal notes, requests information and resolves with a resolution text. \\
+FR-10 & The reporter answers information requests, verifies the fix or reopens the incident, and gives feedback (1–5 stars), which closes it. \\
+FR-11 & The reporter or an administrator can cancel an incident before work starts. \\
+FR-12 & Administrators reassign (choosing from recommendations), change priority, mark duplicates and close incidents. \\
+\multicolumn{2}{@{}l}{\textbf{\color{accent}SLA, escalation and notification}} \\
+FR-13 & SLA deadlines come from configurable policies per priority, with optional per-service overrides. \\
+FR-14 & A background monitor marks incidents at risk (80\,\% of allowed time) and violated (deadline passed). \\
+FR-15 & Unacknowledged P1 incidents escalate to the team lead, then administrators, then IT managers. \\
+FR-16 & Relevant users are notified in the application and by e-mail, according to per-event rules. \\
+\multicolumn{2}{@{}l}{\textbf{\color{accent}Audit, search and reporting}} \\
+FR-17 & Every change is recorded with time, user, action, previous and new state and a description. \\
+FR-18 & Incidents can be searched by number, status, priority, category, service, technician, SLA status and creation date range. \\
+FR-19 & Administrators see an overview, technician workload, service and category analysis, priority distribution, SLA compliance and incidents per day. \\
+FR-20 & Administrators configure IT services, categories (with keywords and a required skill), SLA policies and the assignment strategy. \\ \bottomrule
+\end{longtable}
+
+\subsection{Non-functional requirements}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Quality} & \textbf{How it is met} \\ \midrule
+Maintainability & Layered architecture; business rules in plain Java classes; patterns isolate what changes (strategies, states, channels). \\
+Extensibility & New statuses, strategies, categories, notification channels need one new class or a database row. \\
+Security & BCrypt passwords, stateless JWT, role checks on every admin endpoint, object-level access policy, input validation. \\
+Reliability & Database constraints and transactions; each scheduled check handles every incident in its own transaction. \\
+Performance & Paginated lists (max 100 rows), indexed foreign keys, read-only transactions for queries. \\
+Usability & One consistent interface, a home page and menu per role, only valid actions shown, dark mode, responsive layout. \\
+Testability & Injected clock, interfaces everywhere, 676 automated tests including real-database integration tests. \\
+Portability & Docker Compose for the database and mail server; schema versioned with Flyway. \\ \bottomrule
+\end{tabularx}
+
+\subsection{User roles}
+\begin{tabularx}{\linewidth}{@{}l c c c c c X@{}}
+\toprule
+\textbf{Capability} & \textbf{Emp.} & \textbf{Tech.} & \textbf{Lead} & \textbf{Admin} & \textbf{Mgr.} & \textbf{Notes} \\ \midrule
+Report, track own incidents & \yes & & & & & reporter only \\
+Answer info, verify, reopen, rate & \yes & & & & & reporter only \\
+Work an incident & & \yes & \yes & & & assignee only \\
+See team's incidents & & & \yes & \yes & \yes & \\
+Reassign, priority, duplicate, close & & & & \yes & \yes & \\
+Configure system, users, reports, audit & & & & \yes & \yes & \\ \bottomrule
+\end{tabularx}
+
+A team lead is a technician and an IT manager is an administrator: the roles inherit permissions exactly as the classes inherit from each other (Section~\ref{sec:oop}).
+
+\subsection{Business rules}
+\begin{enumerate}[label=BR-\arabic*,leftmargin=3.2em]
+\item Priority score = impact × urgency × business criticality; ≥\,27 is P1, ≥\,12 P2, ≥\,5 P3, otherwise P4. With 100 or more affected users the priority is raised one level (P1 stays P1).
+\item Default SLA (response / resolution): P1 5 min / 30 min, P2 15 min / 2 h, P3 1 h / 8 h, P4 4 h / 24 h. A service-specific policy overrides the default.
+\item Deadlines count from creation; time spent in PENDING\_INFO is added to both deadlines.
+\item An incident is at risk at 80\,\% of its allowed time and violated one moment after a deadline; its SLA status never becomes milder.
+\item Only active, available technicians below their workload limit are eligible. With skill-based assignment, a category's required skill is mandatory; if nobody qualifies the incident stays CLASSIFIED and administrators are told.
+\item Team leads are not auto-assigned unless an administrator enables it, or the incident has escalated.
+\item A P1 that is still ASSIGNED escalates to level 1 at its response deadline and one further level each level-timeout later, up to level 3.
+\item A report is a possible duplicate of an open incident on the same service, created in the previous 24 hours, with Jaccard similarity ≥\,0.3.
+\item Only the transitions of Figure~\ref{fig:lifecycle} are allowed; any other is refused with HTTP 409.
+\item Feedback can be given once, only on a VERIFIED incident, and closes it.
+\end{enumerate}
+
+\diagram{02-use-case}{height=0.92\textheight}{Use case diagram\label{fig:usecase}}
+
+% ============================================================== 3 architecture
+\section{System architecture}
+I-ITSM is a \textbf{layered monolith} with a separate single-page frontend (Figure~\ref{fig:arch}). The browser application talks to the backend only through a JSON REST API; every request after login carries a signed JWT in the \texttt{Authorization} header.
+
+\begin{description}[style=nextline,leftmargin=1.2em]
+\item[Presentation (React SPA)] Role-based pages; an axios client adds the token and sends the user to the login page on HTTP 401.
+\item[Security filter chain] \texttt{JwtAuthenticationFilter} validates the token and loads the user; \texttt{@PreAuthorize} enforces roles.
+\item[Controllers] Ten thin REST controllers that validate input and return immutable DTO records, never entities.
+\item[Facades and services] Transactional business operations (\texttt{IncidentService}, \texttt{AssignmentService}, \texttt{SlaMonitorService}, \texttt{EscalationService}, \texttt{DuplicateDetectionService}, …).
+\item[Domain model] Entities with intent methods and the State pattern; pure strategies for priority, assignment and similarity.
+\item[Observers] Every change is published as an \texttt{IncidentEvent}; the audit observer and the notification observer react to it.
+\item[Repositories] Spring Data JPA interfaces plus composable \texttt{Specification}s for search.
+\item[Schedulers] Two \texttt{@Scheduled} jobs run the SLA monitor and the escalation check.
+\end{description}
+
+\diagram{01-architecture}{height=0.78\textheight}{System architecture\label{fig:arch}}
+
+Figure~\ref{fig:seq} follows one request, reporting the payment outage of workflow 1, through every layer, and Figure~\ref{fig:activity} shows what the schedulers do on every run.
+
+\diagram{12-sequence-report-incident}{width=\linewidth}{Sequence diagram: reporting an incident\label{fig:seq}}
+\diagram{13-activity-sla-escalation}{height=0.85\textheight}{Activity diagram: SLA monitoring and escalation\label{fig:activity}}
+
+% ============================================================== 4 OOP
+\clearpage
+\section{Object-oriented design}\label{sec:oop}
+\subsection{Where each OOP concept is used}
+\begin{longtable}{@{}L{2.8cm}L{6.7cm}L{6.1cm}@{}}
+\toprule
+\textbf{Concept} & \textbf{Where} & \textbf{Why} \\ \midrule \endhead
+Encapsulation & All entity fields are private; state changes only through intent methods (\texttt{incident.acknowledge(now)}, \texttt{user.deactivate()}); no public setters. & An object can never be put into an invalid state from outside; every rule lives in one place. \\
+Abstraction & Abstract \texttt{User}, \texttt{BaseEntity}, \texttt{IitsmException}, \texttt{AbstractIncidentState}; interfaces for every algorithm. & Callers depend on what something does, not how. \\
+Inheritance & \texttt{Employee}, \texttt{Technician}, \texttt{Administrator} extend \texttt{User}; \texttt{TeamLead} extends \texttt{Technician}; \texttt{ITManager} extends \texttt{Administrator}; 12 exceptions extend \texttt{IitsmException}. & Used only for true “is-a” relationships; skills and teams are associations instead. \\
+Polymorphism & \texttt{getRole()} answered by each user subclass; \texttt{rank()} by each strategy; \texttt{send()} by each channel; \texttt{onEvent()} by each observer. & No \texttt{if}/\texttt{switch} on types; behaviour is chosen by the object. \\
+Interfaces & \texttt{IncidentState}, \texttt{AssignmentStrategy}, \texttt{PriorityCalculator}, \texttt{SimilarityStrategy}, \texttt{IncidentObserver}, \texttt{NotificationChannel}, repositories. & Contracts that let implementations be swapped and tested in isolation. \\
+Composition & \texttt{Incident} owns its comments and feedback; services are composed from injected collaborators. & Behaviour is assembled from small parts instead of deep hierarchies. \\
+Association / aggregation & Incident → reporter, assignee, service, category; Team → members and lead; audit logs and notifications aggregate around an incident. & Mirrors the real domain (Figure~\ref{fig:domain}). \\
+Exception handling & Custom unchecked (runtime) business exceptions, all subclasses of \texttt{IitsmException}, each carrying an HTTP status; one \texttt{GlobalExceptionHandler}. & Clear, typed errors; consistent JSON responses. \\
+Collections & \texttt{EnumMap} for state registry and notification rules, \texttt{EnumSet} for allowed transitions and workload statuses, \texttt{HashSet} for Jaccard word sets, sorted \texttt{List} with a \texttt{Comparator} chain for ranking. & Each structure matches its access pattern (constant-time enum lookup, set algebra, ordered ranking). \\
+Records & DTOs, \texttt{IncidentEvent}, \texttt{TechnicianCandidate}, \texttt{PriorityResult}, \texttt{Deadlines}. & Immutable value objects with no boilerplate. \\ \bottomrule
+\end{longtable}
+
+\subsection{User hierarchy}
+\diagram{03-class-users}{width=0.88\linewidth}{Class diagram: user hierarchy\label{fig:users}}
+All users are stored in one \texttt{users} table (single-table inheritance) with a \texttt{role} discriminator column. Each subclass answers \texttt{getRole()} itself, and the role carries Spring Security authorities so that a team lead automatically has technician rights and an IT manager has administrator rights.
+\lstinputlisting{generated/code/user.java}
+\lstinputlisting{generated/code/technician.java}
+
+\subsection{Incident domain model}
+\diagram{04-class-domain}{width=\linewidth}{Class diagram: incident domain model\label{fig:domain}}
+The incident is the aggregate root. Its lifecycle methods check the transition first and then change its own state; for example:
+\lstinputlisting{generated/code/acknowledge.java}
+
+\subsection{Exception handling}
+\diagram{10-exceptions}{width=0.62\linewidth}{Class diagram: exception hierarchy and HTTP mapping}
+Each situation listed in the brief has its own exception class: invalid login (401), unauthorised operation (403), incident or service not found (404), invalid state transition, duplicate resource (409), technician unavailable or workload exceeded (422), missing SLA configuration (500) and invalid input (400, with the failing fields). Database failures are mapped to 503 by the global handler.
+\lstinputlisting{generated/code/exception.java}
+
+% ============================================================== 5 patterns
+\section{Design patterns}
+\begin{tabularx}{\linewidth}{@{}l X X@{}}
+\toprule
+\textbf{Pattern} & \textbf{Problem it solves} & \textbf{Classes} \\ \midrule
+State & Prevent illegal lifecycle moves; keep the rules for each status in one place & \texttt{IncidentState}, 11 state classes, \texttt{IncidentStateMachine} \\
+Strategy & Change how priority, assignment and similarity are computed without touching callers & \texttt{PriorityCalculator}, \texttt{AssignmentStrategy} (3), \texttt{SimilarityStrategy} \\
+Observer & React to every change (audit, notifications) without coupling services to them & \texttt{IncidentEventPublisher}, \texttt{IncidentObserver}, \texttt{AuditObserver}, \texttt{NotificationObserver} \\
+Factory & Centralise validated creation & \texttt{IncidentFactory}, \texttt{UserFactory}, \texttt{NotificationChannelFactory} \\
+Adapter & Fit an external service to our interface & \texttt{EmailChannel} adapts Spring's \texttt{JavaMailSender} to \texttt{NotificationChannel} \\
+Repository & Hide persistence behind domain-oriented interfaces & 13 Spring Data repositories, \texttt{IncidentSpecifications} \\ \bottomrule
+\end{tabularx}
+
+\subsection{State}
+\diagram{06-state-machine}{height=0.62\textheight}{State diagram: incident lifecycle\label{fig:lifecycle}}
+\diagram{05-state-pattern}{width=\linewidth}{Class diagram: State pattern}
+Each status is a class listing the statuses that may follow it. \texttt{IncidentStates} registers them in an \texttt{EnumMap}; every lifecycle method calls \texttt{IncidentStateMachine.requireTransition}, which throws \texttt{InvalidStateTransitionException} for anything else, so “NEW → CLOSED” is impossible.
+\lstinputlisting{generated/code/newState.java}
+\lstinputlisting{generated/code/stateMachine.java}
+
+\subsection{Strategy}
+\diagram{07-strategy-pattern}{width=\linewidth}{Class diagram: Strategy pattern}
+\lstinputlisting{generated/code/assignmentStrategy.java}
+\lstinputlisting{generated/code/skillBased.java}
+The active assignment strategy is a row in \texttt{system\_config}; administrators switch it from the settings page and the next incident uses it. Adding a strategy means adding one Spring component.
+
+\subsection{Observer, Factory and Adapter}
+\diagram{08-observer-pattern}{height=0.75\textheight}{Class diagram: Observer, Factory and Adapter}
+\lstinputlisting{generated/code/observer.java}
+\lstinputlisting{generated/code/publisher.java}
+\lstinputlisting{generated/code/channel.java}
+The audit observer runs first (\texttt{@Order(1)}) inside the transaction; the notification observer runs second and sends messages only after the transaction commits, so a rolled-back change never notifies anyone. \texttt{NotificationRules} maps each event type to its audience (reporter, assignee, team lead of the assignee, all administrators) and to whether an e-mail is sent. A new channel (SMS, push, Slack) is one class implementing \texttt{NotificationChannel}.
+
+\subsection{Factory and Repository}
+\diagram{09-factory-repository}{width=\linewidth}{Class diagram: Factory and Repository patterns}
+\texttt{IncidentFactory} validates every field (title length, impact and urgency range, existing active service and category) and gives the incident its number; \texttt{UserFactory} creates the right subclass for a role and hashes the password. Repositories hide all SQL; the nine search filters are small \texttt{Specification}s combined with \texttt{and}, always starting from \texttt{visibleTo(user)} so a filter can only narrow what a user may see.
+
+% ============================================================== 6 intelligent
+\section{Intelligent features}
+\subsection{Intelligent priority determination}
+\lstinputlisting{generated/code/priority.java}
+\begin{tabularx}{\linewidth}{@{}l c c c c c c X@{}}
+\toprule
+\textbf{Example} & \textbf{Impact} & \textbf{Urgency} & \textbf{Crit.} & \textbf{Users} & \textbf{Score} & \textbf{Priority} & \textbf{Why} \\ \midrule
+Payment outage & 3 & 3 & 5 & 250 & 45 & P1 & ≥\,27 \\
+VPN disconnecting & 2 & 2 & 4 & 5 & 16 & P2 & 12–26 \\
+E-mail slow for many & 2 & 2 & 3 & 150 & 12 & P1 & P2 bumped by ≥\,100 users \\
+Wiki typo & 1 & 1 & 1 & 1 & 1 & P4 & < 5 \\ \bottomrule
+\end{tabularx}
+
+\subsection{Smart technician assignment and recommendation}
+\texttt{AssignmentService} first finds eligible technicians (active, available, below their workload limit, with their proficiency in the category's required skill), then asks the active strategy to rank them:
+\begin{itemize}
+\item \textbf{Skill-based} (default): highest proficiency, then fewest active incidents, then most experience; a required skill is mandatory.
+\item \textbf{Load-based}: fewest active incidents, then most experience; skills ignored.
+\item \textbf{Round-robin}: takes turns by technician id, skipping anyone at their limit.
+\end{itemize}
+The same ranking produces the top-three recommendations an administrator sees when reassigning (Figure~\ref{fig:recommend}).
+
+\subsection{Automatic categorisation}
+Each category stores comma-separated keywords. \texttt{CategorySuggester} counts how many distinct keywords of each active category appear among the words of the title and description and suggests the best matches. New categories are suggested automatically once they have keywords; no code change is needed.
+
+\subsection{Duplicate incident detection}
+For a new incident, \texttt{DuplicateDetectionService} looks at open incidents on the same service created in the previous 24 hours and computes the \textbf{Jaccard similarity} of their keyword sets, $J(A,B) = |A\cap B| / |A\cup B|$. Candidates scoring at least 0.3 (configurable) are returned, best first, as a warning; the report is still created and an administrator may mark it as a duplicate.
+\lstinputlisting{generated/code/jaccard.java}
+
+\subsection{SLA risk detection and automatic escalation}
+\texttt{SlaMonitorService} evaluates every open incident on a timer: at risk at 80\,\% of the allowed time, violated after a deadline (Figure~\ref{fig:activity}). \texttt{EscalationService} raises unacknowledged P1 incidents one level at a time: level 1 alerts the assignee's team lead, level 2 the administrators, level 3 the IT managers. Each incident is processed in its own transaction and \texttt{try}/\texttt{catch}, so one faulty record cannot stop the others. A demo profile compresses time twenty-fold so the behaviour can be shown live.
+
+% ============================================================== 7 database
+\section{Database design}
+\diagram{11-er-diagram}{width=0.95\linewidth}{Entity–relationship diagram}
+\subsection{Schema}
+The schema has 13 tables, created and evolved by Flyway migrations V1 (schema), V2 (reference data), V3 (development seed users, dev profile only), V4 (incident number sequence and duplicate threshold) and V5 (team-lead assignment setting). Hibernate runs in \texttt{validate} mode, so the Java mapping must match the migrations exactly.
+
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Table} & \textbf{Purpose and key constraints} \\ \midrule
+\texttt{users} & All users (single-table inheritance, \texttt{role} discriminator); unique e-mail; technician columns are nullable. \\
+\texttt{teams} & Technician teams; unique name; optional lead (FK to users). \\
+\texttt{skills}, \texttt{technician\_skills} & Skills and each technician's proficiency 1–5 (composite primary key). \\
+\texttt{categories} & Incident categories with keywords and an optional required skill. \\
+\texttt{it\_services} & Services with business criticality 1–5. \\
+\texttt{sla\_policies} & Response/resolution minutes per priority; a NULL service is the default; partial unique indexes allow one default and one override per service. \\
+\texttt{incidents} & The incident, with \texttt{CHECK} constraints on impact, urgency, affected users, priority, status and SLA status; self-reference for duplicates. \\
+\texttt{incident\_comments} & Notes, information requests and answers. \\
+\texttt{audit\_logs} & The audit trail; \texttt{user\_id} NULL means the system acted. \\
+\texttt{notifications} & In-app notifications with a read flag. \\
+\texttt{feedback} & One rating per incident (unique \texttt{incident\_id}). \\
+\texttt{system\_config} & Runtime settings: assignment strategy, duplicate threshold and window, priority bump threshold, team-lead switch. \\ \bottomrule
+\end{tabularx}
+
+\subsection{Sample data}
+\begin{minipage}[t]{0.48\linewidth}
+\textbf{IT services}\par
+\begin{tabular}{@{}lc@{}}
+\toprule Service & Criticality \\ \midrule
+Payment Application & 5 \\ VPN Gateway & 4 \\ Corporate Email & 3 \\ Internal Wiki & 1 \\ \bottomrule
+\end{tabular}
+
+\vspace{8pt}\textbf{Default SLA policies}\par
+\begin{tabular}{@{}lcc@{}}
+\toprule Priority & Respond & Resolve \\ \midrule
+P1 & 5 min & 30 min \\ P2 & 15 min & 2 h \\ P3 & 1 h & 8 h \\ P4 & 4 h & 24 h \\ \bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.5\linewidth}
+\textbf{Seeded users} (password \texttt{Password@123})\par
+\begin{tabular}{@{}ll@{}}
+\toprule User & Role / team \\ \midrule
+Asha, Ravi & Employees \\
+Kiran & Technician, Application Support \\
+Sana & Technician, Infrastructure \\
+Dev & Technician, Infrastructure \\
+Meera & Team lead, Application Support \\
+System Admin & Administrator \\
+IT Manager & IT manager \\ \bottomrule
+\end{tabular}
+\end{minipage}
+
+\vspace{8pt}Nine categories (Hardware, Software, Network, Database, Cloud, Security, Authentication, Application, Storage) each have keywords and a required skill.
+
+% ============================================================== 8 technology
+\section{Technology stack}
+\begin{longtable}{@{}p{3.2cm}p{4.4cm}p{8cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Role} \\ \midrule \endhead
+Language & Java 21 & Backend language: classes, interfaces, records, enums, generics. \\
+Backend framework & Spring Boot 3.3 & Dependency injection, web server, configuration profiles. \\
+Web & Spring Web MVC, Bean Validation & REST controllers, request validation. \\
+Security & Spring Security, JJWT, BCrypt & Authentication, roles, signed tokens, password hashing. \\
+Persistence & Spring Data JPA, Hibernate & Repositories and object–relational mapping. \\
+Database & PostgreSQL 16 & Relational storage with constraints. \\
+Migrations & Flyway & Versioned schema changes. \\
+Scheduling & Spring \texttt{@Scheduled} & SLA monitor and escalation. \\
+E-mail & Spring Mail (SMTP), Mailpit & E-mail channel; Mailpit catches mail in development. \\
+API docs & springdoc-openapi (Swagger UI) & Interactive API documentation. \\
+Frontend & React 18, Vite, React Router 6, Axios & Single-page application, routing, HTTP client. \\
+Charts & Recharts & Dashboard charts. \\
+Styling & Plain CSS with design tokens & Light and dark themes, responsive layout. \\
+Testing & JUnit 5, Spring Boot Test, MockMvc, Testcontainers & Unit, integration and API tests on real PostgreSQL. \\
+Build and run & Maven, npm, Docker Compose & Builds and local infrastructure. \\
+Documentation & PlantUML, Graphviz, LaTeX & Diagrams and this report. \\
+Version control & Git, GitHub & Source repository and pull requests. \\ \bottomrule
+\end{longtable}
+
+\subsection{Technology selection report}
+\begin{keybox}{1. Why this programming language?}
+Java makes object-oriented design explicit: abstract classes, interfaces, access modifiers, enums and records map one-to-one onto the concepts this course assesses. It is strongly typed, so design errors surface at compile time, and it has the most mature enterprise ecosystem (Spring, Hibernate, JUnit).
+\end{keybox}
+\begin{keybox}{2. Why this frontend technology?}
+React lets us build one interface whose pages and menus depend on the user's role, from small reusable components (badges, tables, the notification bell). Vite gives fast builds; Recharts provides accessible charts; plain CSS with design tokens keeps the look consistent in light and dark mode without a heavy UI framework.
+\end{keybox}
+\begin{keybox}{3. Why this backend technology?}
+Spring Boot provides dependency injection, which is exactly what makes our patterns work: every strategy, observer and channel is an interface, and Spring supplies all implementations. Spring Security gives proven authentication and role-based authorisation; Spring Data removes boilerplate SQL.
+\end{keybox}
+\begin{keybox}{4. Why this database?}
+Incidents, users, services and policies are highly relational, and correctness matters: PostgreSQL enforces foreign keys, unique constraints, \texttt{CHECK} constraints and partial unique indexes (one default SLA policy per priority). It is free, robust and well supported by Hibernate and Testcontainers.
+\end{keybox}
+\begin{keybox}{5. Why this architecture?}
+A layered monolith with a separate SPA is the simplest architecture that is still clean: each layer has one responsibility, business logic is independent of the web and the database, and one deployable backend is easy to run and test. A REST API means any future client (mobile, chatbot) can reuse it.
+\end{keybox}
+\begin{keybox}{6. What alternatives did we consider?}
+A Java Swing desktop application with SQLite (simpler, but a service desk is used by many people on different machines at the same time); Node.js with MongoDB (fast to start, but weaker typing for an OOP course and no relational constraints); microservices (unnecessary operational complexity for this scale).
+\end{keybox}
+\begin{keybox}{7. Advantages and limitations of the stack}
+Advantages: strong typing, mature security, real database constraints, excellent testing support, one API for any client. Limitations: more setup (Docker, two servers), Spring's annotations hide some wiring, the JVM uses more memory than lighter runtimes, and the token is kept in browser local storage (documented in Section~\ref{sec:security}).
+\end{keybox}
+\begin{keybox}{8. How does the technology support object-oriented design?}
+Java provides the language features; Spring's dependency injection lets us program to interfaces and inject a \texttt{List<IncidentObserver>} or \texttt{List<AssignmentStrategy>}; JPA maps the class hierarchy onto tables (single-table inheritance) and associations onto foreign keys; Bean Validation and the exception handler keep invariants in the domain.
+\end{keybox}
+\begin{keybox}{9. How would the system evolve with many more users?}
+The API is stateless (JWT), so several backend instances can run behind a load balancer. Reads can go to PostgreSQL replicas; notifications can move onto a message queue (RabbitMQ or Kafka) so sending e-mail never slows a request; scheduled jobs need a distributed lock (e.g.\ ShedLock) so only one instance runs them; caching can serve reference data; and the frontend can be served from a CDN.
+\end{keybox}
+
+% ============================================================== 9 security
+\section{Security considerations}\label{sec:security}
+\textbf{Implemented}
+\begin{itemize}
+\item \textbf{Authentication}: e-mail and password; passwords hashed with BCrypt and never returned by the API.
+\item \textbf{Stateless sessions}: every request carries an HS-signed JWT with an expiry; invalid or missing tokens give HTTP 401.
+\item \textbf{Role-based authorisation}: \texttt{@PreAuthorize("hasRole('ADMIN')")} on every administrative endpoint (HTTP 403 otherwise).
+\item \textbf{Object-level authorisation}: \texttt{IncidentAccessPolicy} allows only the reporter, the assignee, the assignee's team lead and administrators to view an incident, and only the right person to perform each action.
+\item \textbf{Input validation}: Bean Validation on every request body, range checks in factories, and database constraints as a last line of defence.
+\item \textbf{Injection}: all queries are parameterised through JPA; React escapes all rendered text.
+\item \textbf{CORS}: only the frontend's origin may call the API.
+\end{itemize}
+\lstinputlisting{generated/code/preAuthorize.java}
+\textbf{Not covered yet}: refresh tokens and token revocation, rate limiting and account lockout after failed logins, HTTPS termination (a reverse proxy in production), and storing the token in an \texttt{HttpOnly} cookie instead of local storage.
+
+% ============================================================== 10 UI
+\section{User interface}
+Each role lands on its own home page with its own menu; every list is paginated; actions appear only when they are valid for the incident's current status; and every page works in light and dark mode and on small screens.
+\shot{login}{Login page (development build shows one-click demo users)}
+\shot{w1-filled}{Employee: reporting an incident, with category suggestion}
+\shot{w1-created}{Incident created: priority calculated and technician assigned automatically}
+\shot{w1-detail}{Incident detail with SLA deadlines and history}
+\shot{w2-pending}{Pending information: the SLA clock is paused}
+\shot{w2-history}{The audit trail of a closed incident}
+\shot{w3-duplicates}{Duplicate warning when reporting a similar incident}
+\shot{w3-escalated}{An unacknowledged P1: SLA violated and escalated to level 3}
+\shot{w3-recommend}{Smart technician recommendation\label{fig:recommend}}
+\shot{w3-mailpit}{E-mail notifications (caught by Mailpit in development)}
+\shot{a-dashboard}{Administrator dashboard}
+\shot{a-dashboard-charts}{Dashboard charts (each has a table view)}
+\shot{a-search-filtered}{Incident search: P1 incidents that violated their SLA}
+\shot{a-audit}{Audit log}
+\shot{a-technician-skills}{Technician administration: skills and proficiency}
+\shot{a-settings}{Assignment settings: switching strategy at runtime}
+\shot{swagger}{REST API documentation (Swagger UI)}
+
+% ============================================================== 11 testing
+\section{Testing}
+\subsection{Approach}
+\begin{itemize}
+\item \textbf{Unit tests} (plain JUnit 5) for every pure rule: priority calculation, SLA evaluation, state transitions, strategies, similarity, tokenizer, factories.
+\item \textbf{Integration tests} (\texttt{@SpringBootTest} with Testcontainers) run against a real PostgreSQL started in Docker, so the migrations, constraints and queries are tested as they run in production.
+\item \textbf{API tests} (MockMvc) go through the real security filter chain with real JWTs: status codes, validation messages, authorisation.
+\item \textbf{Workflow tests} replay the three demo workflows end to end.
+\item \textbf{Time travel}: business code never calls \texttt{Instant.now()}; it uses an injected \texttt{Clock}. Tests use a \texttt{MutableClock} and call the schedulers' \texttt{runOnce()} directly, so SLA and escalation behaviour is tested without waiting.
+\end{itemize}
+\lstinputlisting[basicstyle=\ttfamily\scriptsize]{generated/code/workflowTest.java}
+\textbf{Result}: \texttt{mvn verify} runs \textbf{676 tests, 0 failures, 0 errors}. The frontend was additionally exercised end to end with a scripted browser through all three workflows and every administration page.
+
+\subsection{Documented test cases}
+The 28 test cases below cover normal operation, boundary conditions, invalid input, exceptions, authorisation and business rules; each names the automated test that proves it (\texttt{docs/TEST\_CASES.md}).
+{\small\input{generated/testcases.tex}}
+
+% ============================================================== 12 demo
+\section{Project demonstration}
+The recorded video (\texttt{N\_OOP\_S1\_2025-2026\_Project.mp4}, about 18 minutes) introduces every member and the module they built, explains the design, and demonstrates the three required workflows on the running system:
+\begin{enumerate}
+\item \textbf{Employee reports → system prioritises → technician assigned → notification generated}: a payment outage becomes INC1001, P1 (score 45), assigned to Kiran; in-app and e-mail notifications.
+\item \textbf{Technician investigates → SLA monitored → incident resolved → user notified}: a VPN incident (P2) is acknowledged, information is requested (SLA paused), the reporter answers, the technician resolves, the reporter verifies and rates it, and it closes automatically.
+\item \textbf{Multiple incidents → duplicates identified → escalated}: a second payment report is flagged as similar to INC1001 and marked as its duplicate; an unacknowledged P1 violates its SLA and escalates to the team lead, the administrators and the IT managers.
+\end{enumerate}
+% ============================================================== 13 innovation
+\section{Innovation, limitations and future work}
+\textbf{Innovation challenge items implemented}: incident similarity detection, automated incident escalation (three levels), SLA risk detection before the violation, an analytics and visualisation dashboard, and an event-driven architecture (observers on every change). Beyond the MVP we also provide three assignment strategies switchable at runtime, a smart recommendation list, runtime-configurable categories, SLA policies and settings, dark mode and a fully documented API.
+
+\textbf{Limitations}: SLA time is wall-clock (no business hours or holidays); the round-robin position is kept in memory and resets on restart; notifications poll every 15 seconds rather than being pushed; the security gaps listed in Section~\ref{sec:security}.
+
+\textbf{Future work}: real-time updates with Server-Sent Events, SMS and push notification channels (one class each), suggested resolutions from similar closed incidents, business-hours SLA calendars, a service dependency graph for root-cause hints, and container deployment to the cloud.
+
+% ============================================================== 14 team
+\section{Team and contributions}
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Member} & \textbf{Contribution} \\ \midrule
+Member 1 & React application, role-based routing and pages, notification bell, dashboard and charts, user experience. \\
+Member 2 & Domain model, user hierarchy, incident lifecycle and State pattern, exception hierarchy, class diagrams. \\
+Member 3 & REST API and DTOs, Spring Security with JWT, SLA monitoring, notifications (Observer, Factory, Adapter), database schema and migrations. \\
+Member 4 & Priority calculation, assignment strategies and recommendation, duplicate detection, escalation, test suite and test case catalogue. \\ \bottomrule
+\end{tabularx}
+
+\appendix
+% ============================================================== A API
+\section{REST API}
+All endpoints are under \texttt{http://localhost:8080}; all except login and register need a bearer token. “Admin” means administrator or IT manager.
+\begin{longtable}{@{}p{1.4cm}p{6.6cm}p{2.1cm}p{5.4cm}@{}}
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Who} & \textbf{Purpose} \\ \midrule \endhead
+POST & /api/auth/login, /api/auth/register & anyone & Log in (returns JWT), register an employee \\
+GET & /api/auth/me & any user & Current user \\
+GET & /api/services, /api/categories, /api/skills & any user & Active reference data \\
+POST & /api/incidents & any user & Report (returns possible duplicates) \\
+POST & /api/incidents/suggest-category & any user & Category suggestions \\
+GET & /api/incidents & any user & Search, limited to what the user may see \\
+GET & /api/incidents/\{id\}, …/comments, …/history, …/feedback & viewers & Detail, thread, audit history, feedback \\
+POST & /api/incidents/\{id\}/acknowledge, /start, /resolve & assignee & Technician actions \\
+POST & /api/incidents/\{id\}/verify, /reopen, /feedback & reporter & Reporter actions \\
+POST & /api/incidents/\{id\}/cancel & reporter, admin & Cancel before work starts \\
+POST & /api/incidents/\{id\}/comments & by type & Note, info request, info response \\
+POST & /api/incidents/\{id\}/reassign, /priority, /duplicate, /close & admin & Administrative actions \\
+GET & /api/incidents/\{id\}/recommendations & admin & Best technicians \\
+GET/PUT & /api/technicians/me/workload, /me/availability & technician & Own workload and availability \\
+GET/POST & /api/notifications, /unread-count, /\{id\}/read, /read-all & any user & Own notifications \\
+GET & /api/reports/overview, /technician-workload, /service-analysis, /category-distribution, /priority-distribution, /sla-compliance, /incidents-per-day & admin & Reports \\
+GET & /api/audit & admin & Audit log with filters \\
+CRUD & /api/admin/users, /teams, /technicians/\{id\}, /technicians/\{id\}/skills & admin & People administration \\
+CRUD & /api/admin/services, /categories, /sla-policies & admin & Catalogue and SLA administration \\
+GET/PUT & /api/admin/config/assignment-strategy, /config/team-lead-assignment & admin & Assignment settings \\ \bottomrule
+\end{longtable}
+
+% ============================================================== B running
+\section{Running the system}
+\begin{lstlisting}[language=bash]
+docker compose up -d                 # PostgreSQL + Mailpit
+cd backend && mvn spring-boot:run    # API on http://localhost:8080
+cd frontend && npm install && npm run dev   # app on http://localhost:5173
+cd backend && mvn verify             # 676 tests (Docker must be running)
+\end{lstlisting}
+Demo mode (time runs 20 times faster): start the backend with \texttt{SPRING\_PROFILES\_ACTIVE=dev,demo} on a fresh database (\texttt{docker compose down -v}). Seeded users use the password \texttt{Password@123}.
+
+\end{document}
