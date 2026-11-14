@@ -28,5 +28,10 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Tests never use a developer's real AI provider (from .env or the environment); a test that needs the
+        // guide sets iitsm.assistant.* itself.
+        registry.add("ASSISTANT_BASE_URL", () -> "");
+        registry.add("ASSISTANT_API_KEY", () -> "");
+        registry.add("ASSISTANT_MODEL", () -> "");
     }
 }

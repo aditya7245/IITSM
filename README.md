@@ -65,6 +65,26 @@ mvn spring-boot:run
 
 The three demo workflows to follow are in [`docs/demo-script.md`](docs/demo-script.md). The test cases are catalogued in [`docs/TEST_CASES.md`](docs/TEST_CASES.md).
 
+**AI guide (optional).** The chat button in the top bar opens the I-ITSM Guide, an AI assistant that explains the app and the incident on screen. It works with any provider that offers the OpenAI-style chat-completions API, and stays switched off (the panel says "not set up") until the backend is given a provider. Put these in a `.env` file in the project root (Git ignores it; the backend reads it at start-up, and real environment variables override it). The key stays on the server and must never go into the frontend or Git:
+
+```properties
+# the provider's OpenAI-compatible address
+ASSISTANT_BASE_URL=https://api.groq.com/openai/v1
+# leave empty for a local Ollama
+ASSISTANT_API_KEY=<your key>
+# a chat model from the provider's model list (keep comments on their own lines)
+ASSISTANT_MODEL=openai/gpt-oss-120b
+```
+
+Restart the backend after changing it. The tests ignore these settings, so they never call a real provider.
+
+| Provider | `ASSISTANT_BASE_URL` |
+|---|---|
+| Groq (free tier) | `https://api.groq.com/openai/v1` |
+| Google Gemini (free tier) | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| OpenRouter (free `:free` models) | `https://openrouter.ai/api/v1` |
+| Ollama on this PC (free, no key) | `http://localhost:11434/v1` |
+
 **Run tests** (Docker must be running): `cd backend && mvn clean verify`. To check that the frontend compiles: `cd frontend && npm run build`.
 
 **Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database, so the next start has fresh demo data and incident numbers start again at INC1001).
@@ -91,7 +111,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 49 of 53 (all of Phases 1 to 7).
+**Checklist items done:** 50 of 54 (all of Phases 1 to 7, plus 8.5).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -102,7 +122,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 5 REST API | 5.1 to 5.7 | all |
 | 6 Demo and tests | 6.1 to 6.3 | all |
 | 7 Frontend | 7.1 to 7.7 | all |
-| 8 Innovation and documents | 8.1 to 8.4 | none |
+| 8 Innovation and documents | 8.1 to 8.5 | 8.5 |
 
 ### Rules for every item
 
@@ -452,6 +472,11 @@ Fixed choices: **Vite + React 18, JavaScript (not TypeScript)**, `react-router-d
   **In plain words:** The recorded demo you submit.
   **Details for Claude:** 15 to 20 minutes, three workflows from `docs/demo-script.md`, every member introduces themselves and explains a module; file named per the spec; upload before 22 Nov 2026.
   *Done when:* uploaded and the link confirmed.
+
+- [x] **8.5 AI guide side panel (innovation).** *Status: done (tested with Groq `openai/gpt-oss-120b`; set up as in "AI guide" in section 1).*
+  **In plain words:** A chat button in the top bar opens a side panel with an AI assistant that explains how to use I-ITSM. It knows who you are, which page you are on and, on an incident page, that incident's status, SLA and the buttons you can use. It only gives advice; it cannot change anything.
+  **Details for Claude:** Backend: `GET /api/assistant/status` (`enabled`) and `POST /api/assistant/chat` (`messages` of `user`/`assistant` turns ending with the user's question, at most 40, each at most 4000 characters; optional `page` and `incidentId`), answered by `AssistantFacade` (deliberately not transactional, so no database connection is held while waiting for the model). The `LlmClient` interface has one implementation, `OpenAiCompatibleLlmClient` (Spring `RestClient`, `POST <base-url>/chat/completions`), configured by `AssistantProperties` (`iitsm.assistant.*`, env `ASSISTANT_BASE_URL`, `ASSISTANT_API_KEY`, `ASSISTANT_MODEL`); it is off unless the address and model are set, and provider failures become 503 with a friendly message. `AssistantPromptBuilder` (pure) builds the system prompt from the rules, the asker, the page, the incident (loaded through `IncidentFacade.get`, so it is only included when the user may view it; user-typed text is fenced in `<incident>` tags) and the user guide in `src/main/resources/assistant/app-guide.md`. Only the last `max-turns` (12) messages are sent. Frontend: `AssistantPanel.jsx` (button in the top bar, slide-in panel that stays mounted so the chat survives navigation, starter questions per role, a small safe Markdown renderer, retry on failure).
+  *Done when:* with a provider configured, an employee on an incident page gets an answer that names the right buttons; with none configured, the panel says it is not set up; `AssistantApiTest`, `AssistantDisabledApiTest`, `AssistantPromptBuilderTest` and `OpenAiCompatibleLlmClientTest` pass.
 
 ---
 

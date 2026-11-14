@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import NotificationBell from './NotificationBell';
+import AssistantPanel, { AssistantButton } from './AssistantPanel';
 import { label } from '../lib/format';
 
 const NAV = {
@@ -33,6 +34,8 @@ export default function Layout() {
   const { user, group, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const closeGuide = useCallback(() => setGuideOpen(false), []);
 
   const signOut = () => {
     logout();
@@ -40,12 +43,13 @@ export default function Layout() {
   };
 
   return (
-    <div className="shell">
+    <div className={`shell${guideOpen ? ' guide-open' : ''}`}>
       <header className="topbar">
         <button type="button" className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu"
           aria-expanded={menuOpen}>☰</button>
         <span className="brand"><span className="brand-mark">IT</span> I-ITSM</span>
         <div className="topbar-right">
+          <AssistantButton open={guideOpen} onToggle={() => setGuideOpen(!guideOpen)} />
           <NotificationBell />
           <div className="user-chip">
             <span className="user-name">{user.fullName}</span>
@@ -69,6 +73,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <AssistantPanel open={guideOpen} onClose={closeGuide} />
     </div>
   );
 }

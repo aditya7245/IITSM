@@ -1,6 +1,10 @@
 spring:
   application:
     name: iitsm
+  config:
+    # Local secrets such as ASSISTANT_API_KEY, from the Git-ignored .env file in the project root
+    # (or in backend/). Real environment variables still win over these.
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
   profiles:
     default: dev
   datasource:
@@ -48,6 +52,13 @@ iitsm:
     monitor-interval-ms: 30000
   escalation:
     level-timeout-minutes: 5
+  assistant:                      # the AI guide; off until ASSISTANT_BASE_URL and ASSISTANT_MODEL are set
+    base-url: ${ASSISTANT_BASE_URL:}
+    api-key: ${ASSISTANT_API_KEY:}
+    model: ${ASSISTANT_MODEL:}
+    max-tokens: 2000              # room for reasoning models, which spend tokens thinking before they answer
+    timeout-seconds: 30
+    max-turns: 12
 
 management:
   endpoints:
