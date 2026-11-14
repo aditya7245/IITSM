@@ -56,7 +56,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 40 of 53 (all of Phases 1 to 5, plus 6.1).
+**Checklist items done:** 42 of 53 (all of Phases 1 to 6).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -65,7 +65,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
 | 4 Services | 4.1 to 4.10 | all |
 | 5 REST API | 5.1 to 5.7 | all |
-| 6 Demo and tests | 6.1 to 6.3 | 6.1 |
+| 6 Demo and tests | 6.1 to 6.3 | all |
 | 7 Frontend | 7.1 to 7.7 | none |
 | 8 Innovation and documents | 8.1 to 8.4 | none |
 
@@ -347,12 +347,12 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** `application-demo.yml` with `iitsm.sla.time-scale: 20`, `iitsm.escalation.level-timeout-minutes: 1`, `iitsm.sla.monitor-interval-ms: 5000`; started with `SPRING_PROFILES_ACTIVE=dev,demo`. `docs/demo-script.md` describes the three workflows step by step with the seeded users: (1) employee reports a payment outage, gets P1, assigned, notified by in-app and email (Mailpit); (2) technician acknowledges, requests info (SLA pauses), employee replies, technician resolves, employee verifies and gives feedback, incident closes; (3) several similar payment incidents flag duplicates, and an unacknowledged P1 escalates through the chain.
   *Done when:* the script has been followed once against the running backend (API calls from Swagger or a REST client) and every step behaved as written.
 
-- [ ] **6.2 Workflow integration tests.** *Status: not started.*
+- [x] **6.2 Workflow integration tests.** *Status: done.*
   **In plain words:** Automated tests that replay the three demo workflows, moving a fake clock forward instead of waiting.
   **Details for Claude:** Three `@SpringBootTest` classes, one per demo workflow, extending `AbstractIntegrationTest`, using `MutableClock` and calling `runOnce()` on the monitor and escalation services instead of waiting.
   *Done when:* all three pass in `mvn verify`.
 
-- [ ] **6.3 Test case catalogue.** *Status: not started.*
+- [x] **6.3 Test case catalogue.** *Status: done.*
   **In plain words:** The written list of at least 18 test cases that the course requires, linked to the real automated tests.
   **Details for Claude:** `docs/TEST_CASES.md`: at least 18 cases, each with ID, category (normal, boundary, invalid input, exception, authorization, business rule), steps, expected result and the name of the automated test that covers it. Must include: priority thresholds, workload at max, SLA at exactly 80%, blank description, `NEW -> CLOSED`, missing SLA configuration, employee viewing another's incident, technician calling an admin endpoint, SLA pause, escalation chain, duplicate detection.
   *Done when:* every listed test name exists in the code.
