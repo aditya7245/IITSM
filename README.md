@@ -56,7 +56,7 @@ Everything left to build, in dependency order: **every item only depends on item
 
 **Already done in the repo (the scaffold):** Spring Boot project and Maven setup; Docker Compose (Postgres and Mailpit); configuration and dev/prod profiles; Flyway migrations V1 (full schema), V2 (reference data) and V3 (dev demo users); the user class hierarchy (User, Employee, Technician, TeamLead, Administrator, ITManager, Team); JWT login (`POST /api/auth/login`), BCrypt passwords and role-based security setup; the base exception hierarchy and global error handler; a smoke test; this README.
 
-**Checklist items done:** 38 of 53 (all of Phases 1, 2, 3 and 4, plus 5.1 to 5.6).
+**Checklist items done:** 39 of 53 (all of Phases 1, 2, 3, 4 and 5).
 
 | Phase | Items | Done |
 |---|---|---|
@@ -64,7 +64,7 @@ Everything left to build, in dependency order: **every item only depends on item
 | 2 Pure business rules | 2.1 to 2.8 | all |
 | 3 Events, audit, notifications | 3.1 to 3.4 | all |
 | 4 Services | 4.1 to 4.10 | all |
-| 5 REST API | 5.1 to 5.7 | 5.1 to 5.6 |
+| 5 REST API | 5.1 to 5.7 | all |
 | 6 Demo and tests | 6.1 to 6.3 | none |
 | 7 Frontend | 7.1 to 7.7 | none |
 | 8 Innovation and documents | 8.1 to 8.4 | none |
@@ -335,7 +335,7 @@ Everything left to build, in dependency order: **every item only depends on item
   **Details for Claude:** Admin CRUD under `/api/admin`: `services`, `categories` (deactivate by `active=false`, never delete), `sla-policies` (a duplicate priority and service pair -> 409). `GET/PUT /api/admin/config/assignment-strategy` (body `strategy`, must be one of the three names, else 400). Read-only `GET /api/services` and `GET /api/categories` (active only) for any authenticated user, used by the report form.
   *Done when:* tests cover each endpoint's happy path, validation, and that switching the strategy changes the next auto-assignment.
 
-- [ ] **5.7 Reports (admin only).** *Status: not started.*
+- [x] **5.7 Reports (admin only).** *Status: done.*
   **In plain words:** The numbers for the dashboard: totals, who is busy, which services break most, SLA health, incidents per day.
   **Details for Claude:** Under `/api/reports`: `overview` (`total`, `open`, `critical` = open P1, `resolved` = status RESOLVED, VERIFIED or CLOSED, `slaViolations` = slaStatus VIOLATED, `averageRating`); `technician-workload` (technician, active count, max); `service-analysis` (service, count); `category-distribution`; `priority-distribution`; `sla-compliance` (counts of each SlaStatus); `incidents-per-day?days=14` (zero-filled). Implemented as grouped JPQL queries.
   *Done when:* integration tests with known data assert exact numbers for each report.
