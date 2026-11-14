@@ -28,6 +28,9 @@ spring:
     properties:
       mail.smtp.auth: ${MAIL_AUTH:false}
       mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+      mail.smtp.connectiontimeout: 20000   # milliseconds: a mail server that does not answer must never hang the app
+      mail.smtp.timeout: 20000
+      mail.smtp.writetimeout: 20000
 
 server:
   port: 8080
@@ -51,6 +54,9 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    mail:
+      enabled: false   # /actuator/health must not wait for the mail server (it made the health check very slow)
 
 springdoc:
   swagger-ui:

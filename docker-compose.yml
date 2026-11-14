@@ -25,6 +25,7 @@ services:
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_SMTP_DISABLE_RDNS: 1   # no reverse DNS lookup of the sender: on Docker Desktop it can delay the SMTP greeting by seconds
 
 volumes:
   pgdata:
