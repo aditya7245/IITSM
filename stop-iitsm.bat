@@ -7,5 +7,5 @@ taskkill /FI "WINDOWTITLE eq I-ITSM backend*" /T /F >nul 2>nul
 taskkill /FI "WINDOWTITLE eq I-ITSM frontend*" /T /F >nul 2>nul
 docker compose stop
 echo.
-echo Stopped. The data is kept. To wipe all incidents and users you created, run:  docker compose down -v
+echo Stopped. The data is kept. To wipe all incidents and users you created, run:  reset-iitsm.bat
 pause

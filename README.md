@@ -30,7 +30,7 @@ CS F213 OOP course project (due 22 Nov 2026). Employees report IT incidents; the
 
 **Needs:** Java 21 or newer, Maven, Node.js 18 or newer, Docker Desktop (running), Git.
 
-**One click (Windows):** double-click `start-iitsm.bat` in the repo root. It starts Docker (Postgres and Mailpit), the backend and the frontend, waits until they answer and opens the app. `start-iitsm-demo.bat` does the same in demo mode (see below), and `stop-iitsm.bat` stops everything. The first start is slow (Maven and npm download packages). If something else already uses port 8080 or 5173, stop it first. **Known quirk:** the frontend window sometimes opens but does not start the app by itself. If the browser cannot open http://localhost:5173, click into the "I-ITSM frontend" window and type `npm run dev`.
+**One click (Windows):** double-click `start-iitsm.bat` in the repo root. It starts Docker (Postgres and Mailpit), the backend and the frontend, waits until they answer and opens the app. `start-iitsm-demo.bat` does the same in demo mode (see below), `stop-iitsm.bat` stops everything (the data is kept), and `reset-iitsm.bat` wipes all data for a fresh start (it asks first, then offers to start the app again). The first start is slow (Maven and npm download packages). If something else already uses port 8080 or 5173, stop it first. **Known quirk:** the frontend window sometimes opens but does not start the app by itself. If the browser cannot open http://localhost:5173, click into the "I-ITSM frontend" window and type `npm run dev`.
 
 **By hand** (three steps):
 
@@ -105,7 +105,7 @@ Restart the backend after changing it. The tests ignore these settings, so they 
 
 **Run tests** (Docker must be running): `cd backend && mvn clean verify`. To check that the frontend compiles: `cd frontend && npm run build`.
 
-**Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database, so the next start has fresh demo data and incident numbers start again at INC1001).
+**Stop / reset:** `docker compose down` (keep data) · `docker compose down -v` (wipe the database, so the next start has fresh demo data and incident numbers start again at INC1001). On Windows, `reset-iitsm.bat` does the wipe for you.
 
 **If something breaks**
 
@@ -311,6 +311,7 @@ I-ITSM is a **layered monolith**: one Spring Boot backend with a PostgreSQL data
 ```
 iitsm/
 ├── start-iitsm.bat, start-iitsm-demo.bat, stop-iitsm.bat   One-click start and stop (Windows)
+├── reset-iitsm.bat           Wipes all data for a fresh start (Windows)
 ├── run-frontend.bat          Used by the start script to run the frontend
 ├── docker-compose.yml        Postgres + Mailpit
 ├── .env.example              Template for local settings
