@@ -108,7 +108,9 @@ class IncidentControllerTest extends AbstractApiTest {
                 reportJson("Payment application down", "Users cannot complete payment transactions"))
                 .andExpect(status().isCreated()));
         List<String> titles = JsonPath.read(bySame, "$.possibleDuplicates[*].title");
-        assertEquals(List.of("Payment application outage"), titles);
+        assertEquals(2, titles.size(), "emp1's own incident and emp2's incident are both reported");
+        assertEquals(List.of("Payment application outage"), titles.stream().filter(java.util.Objects::nonNull).toList(),
+                "emp1 sees the title of their own incident only; emp2's is listed without a title");
     }
 
     @Test
