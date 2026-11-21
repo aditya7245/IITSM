@@ -92,14 +92,17 @@ class IncidentControllerTest extends AbstractApiTest {
     }
 
     @Test
-    void aSimilarSecondReportListsThePossibleDuplicateOnlyToSomeoneWhoMayOpenIt() throws Exception {
-        report();   // by emp1
+    void aSimilarSecondReportShowsTheFullDuplicateToItsOwnerAndOnlyTheNumberToAnotherEmployee() throws Exception {
+        long first = report();   // by emp1
+        String firstNumber = field(body(getAs("admin", "/api/incidents/" + first).andExpect(status().isOk())), "$.incidentNumber");
 
         String byOther = body(postAs("emp2", "/api/incidents",
                 reportJson("Payment application down", "Users cannot complete payment transactions"))
                 .andExpect(status().isCreated()));
-        List<Object> hidden = JsonPath.read(byOther, "$.possibleDuplicates");
-        assertEquals(0, hidden.size(), "another employee's incident must not be revealed");
+        List<String> numbers = JsonPath.read(byOther, "$.possibleDuplicates[*].number");
+        assertEquals(List.of(firstNumber), numbers, "the other employee is told that it is already reported");
+        assertNull(JsonPath.read(byOther, "$.possibleDuplicates[0].title"), "but not what it says");
+        assertNull(JsonPath.read(byOther, "$.possibleDuplicates[0].id"), "and gets no way to open it");
 
         String bySame = body(postAs("emp1", "/api/incidents",
                 reportJson("Payment application down", "Users cannot complete payment transactions"))

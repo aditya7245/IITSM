@@ -1,0 +1,82 @@
+PASS A1 all 8 demo users can log in
+PASS A2 wrong password -> 401 :: 401 Invalid email or password
+PASS A3 unknown user -> same 401 message (no user enumeration) :: 401 Invalid email or password
+PASS A4 register ignores injected role=ADMINISTRATOR :: 201 role=EMPLOYEE
+PASS A5 register rejects a 1-character password :: 400 Validation failed {"password":"size must be between 8 and 72"}
+PASS A6 register rejects same email in other case :: 409 An account with the email PROBE541c7c@X.COM already exists
+PASS A7 register rejects malformed email :: 400
+PASS A8 tampered token -> 401 :: 401
+NOTE A9 forged admin token signed with the committed default JWT secret :: GET /api/admin/users -> 200 (200 means anyone can become admin when JWT_SECRET is not set)
+PASS Z1 emp1 GET /api/admin/users -> 403 :: 403
+PASS Z1 tech1 GET /api/admin/users -> 403 :: 403
+PASS Z1 emp1 GET /api/audit -> 403 :: 403
+PASS Z1 tech1 GET /api/reports/overview -> 403 :: 403
+PASS Z1 lead.app GET /api/admin/sla-policies -> 403 :: 403
+NOTE Z2 GET /api/incidents as emp1 :: 200, 6 rows
+PASS Z3 employee cannot read technician workload endpoint :: 403
+PASS W1a payment outage -> P1 and ASSIGNED :: 201 P1 ASSIGNED assignee=Sana Tech
+PASS W1b reporter got an in-app notification :: INC1010: Incident assigned - Assigned to Sana Tech
+NOTE W1c assignee :: tech2@iitsm.local
+PASS Z4 emp2 GET /api/incidents/{id} on emp1's incident is refused :: 403
+PASS Z4 emp2 GET /api/incidents/{id}/history on emp1's incident is refused :: 403
+PASS Z4 emp2 GET /api/incidents/{id}/comments on emp1's incident is refused :: 403
+PASS Z4 emp2 GET /api/incidents/{id}/feedback on emp1's incident is refused :: 403
+PASS Z4 emp2 POST /api/incidents/{id}/comments on emp1's incident is refused :: 403
+PASS Z4 emp2 POST /api/incidents/{id}/cancel on emp1's incident is refused :: 403
+PASS Z5 tech1 (not assignee) cannot acknowledge :: 403
+PASS Z6 reporter cannot post an internal NOTE :: 403
+PASS S1 resolve while ASSIGNED -> 409 :: 409 Cannot move incident from ASSIGNED to RESOLVED
+PASS S2 admin close while ASSIGNED -> 409 :: 409 Cannot move incident from ASSIGNED to CLOSED
+PASS S3 verify while ASSIGNED -> 409 :: 409
+PASS W2a acknowledge :: 200
+PASS W2b acknowledge twice -> 409 :: 409
+PASS W2c start work :: 200
+PASS W2d info request -> PENDING_INFO and SLA paused :: 201 PENDING_INFO pausedAt=2026-11-14T22:10:20.219677Z
+PASS W2e reply resumes work and pushes deadline later :: IN_PROGRESS 2026-11-14T22:11:48.067280Z -> 2026-11-14T22:11:51.067280Z
+PASS V1 resolve with blank resolution -> 400 :: 400
+PASS W2f resolve :: 200
+PASS S4 feedback before verify is refused :: 409 Feedback can only be given once the fix is verified (this incident is RESOLVED)
+PASS W2g verify :: 200
+PASS V2 rating 6 -> 400 :: 400
+PASS W2h feedback :: 201
+PASS W2i incident auto-closed after feedback :: CLOSED
+PASS S5 second feedback refused :: 400
+NOTE W2j audit trail :: CREATED > CLASSIFIED > ASSIGNED > ACKNOWLEDGED > INVESTIGATION_STARTED > INFO_REQUESTED > INFO_RECEIVED > RESOLVED > VERIFIED > CLOSED
+PASS V3 create with impact 0 -> rejected :: 400 Validation failed
+PASS V3 create with urgency 4 -> rejected :: 400 Validation failed
+PASS V3 create with affectedUsers -5 -> rejected :: 400 Validation failed
+PASS V3 create with title 300 chars -> rejected :: 400 Validation failed
+PASS V3 create with blank description -> rejected :: 400 Validation failed
+PASS V3 create with unknown service -> rejected :: 404 IT service not found: 999999
+PASS V3 create with missing category -> rejected :: 400 Validation failed
+NOTE V3 create with huge description 200KB :: 201 (accepted descriptions have no length limit if 201)
+PASS V4 malformed JSON -> 400 :: 400
+PASS V5 unknown priority enum -> 400 :: 400
+PASS V6 non-numeric id -> 400 :: 400
+PASS V7 missing incident -> 404 :: 404
+PASS V8 page size capped at 100 :: size=100
+PASS F1 search incidentNumber=INC1010 :: 200 total=1
+PASS F1 search status=CLOSED :: 200 total=3
+PASS F1 search priority=P1 :: 200 total=5
+PASS F1 search categoryId=8 :: 200 total=4
+PASS F1 search serviceId=1 :: 200 total=4
+PASS F1 search slaStatus=VIOLATED :: 200 total=2
+PASS F1 search createdFrom=2026-11-14&createdTo=2026-11-14 :: 200 total=11
+NOTE F2 search with createdFrom after createdTo :: 200 total=0 
+NOTE F3 emp2 search (should only see own) :: 200 total=0
+FAIL W3a similar report lists possible duplicates
+PASS S6 mark duplicate of itself refused :: 400 An incident must be a duplicate of a different incident
+NOTE W3b escalation watch on :: INC1013 P1 ASSIGNED responseDeadline=2026-11-14T22:10:39.191836800Z
+PASS W3c unacknowledged P1 escalates and SLA flags after the deadline :: level=3 sla=VIOLATED
+PASS W3d admin marks duplicate :: 200 DUPLICATE of=INC1012
+NOTE C1 25 concurrent reports :: statuses=201 assigned=15
+FAIL C2 no technician pushed over maxWorkload by concurrent assignment :: Dev Tech 5/3, Kiran Tech 6/5, Sana Tech 8/5
+NOTE C3 workload after burst :: [["Dev Tech",5,3],["Kiran Tech",6,5],["Meera Lead",0,5],["Sana Tech",8,5]]
+PASS Z7 deactivated user's existing token stops working :: 401
+PASS Z8 deactivated user cannot log in :: 401
+PASS H1 /actuator/env not exposed :: 401
+PASS H2 CORS refuses unknown origin :: 403 ACAO=null
+NOTE H3 30 wrong passwords then the right one :: 30 x 401, then 200 (200 = no lockout / rate limit)
+PASS H4 AI guide does not leak another user's incident :: 200 I’m not able to see the details of incident INC1010 from here. If you’re the reporter or the assigned technician you can
+
+SUMMARY 67/69 passed

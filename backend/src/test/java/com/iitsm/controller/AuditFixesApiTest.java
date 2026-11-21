@@ -38,16 +38,21 @@ class AuditFixesApiTest extends AbstractApiTest {
     // ------------------------------------------------------------------ duplicates
 
     @Test
-    void anEmployeeOnlySeesPossibleDuplicatesTheyMayOpen() throws Exception {
+    void anEmployeeSeesTheDetailsOfTheirOwnDuplicatesAndOnlyTheNumberOfOtherPeoples() throws Exception {
         long own = payment("emp1", "Payment application unavailable");
 
         String others = body(postAs("emp2", "/api/incidents", createJson("Payment transaction failing")).andExpect(status().isCreated()));
-        assertEquals(List.of(), list(others, "$.possibleDuplicates"), "emp1's incident must not leak to emp2");
+        List<Object> hiddenIds = list(others, "$.possibleDuplicates[*].id");
+        List<Object> hiddenTitles = list(others, "$.possibleDuplicates[*].title");
+        assertEquals(1, list(others, "$.possibleDuplicates[*].number").size(), "emp2 is told that a similar incident exists");
+        assertTrue(hiddenIds.stream().allMatch(java.util.Objects::isNull), "but gets no id to open: " + hiddenIds);
+        assertTrue(hiddenTitles.stream().allMatch(java.util.Objects::isNull), "and no title: " + hiddenTitles);
 
         String mine = body(postAs("emp1", "/api/incidents", createJson("Unable to make payment")).andExpect(status().isCreated()));
-        List<Integer> ids = list(mine, "$.possibleDuplicates[*].id");
-        assertTrue(ids.contains((int) own), "the reporter's own similar incident is still shown: " + ids);
-        assertEquals(1, ids.size(), "but not emp2's: " + ids);
+        List<Object> ids = list(mine, "$.possibleDuplicates[*].id");
+        assertTrue(ids.contains((int) own), "the reporter's own similar incident is shown in full: " + ids);
+        assertEquals(1, ids.stream().filter(java.util.Objects::nonNull).count(), "emp2's incident is listed without an id: " + ids);
+        assertEquals(2, list(mine, "$.possibleDuplicates[*].number").size());
     }
 
     @Test

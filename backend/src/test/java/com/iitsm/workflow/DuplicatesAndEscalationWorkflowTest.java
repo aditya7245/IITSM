@@ -35,8 +35,11 @@ class DuplicatesAndEscalationWorkflowTest extends WorkflowTestBase {
         String first = reportPaymentOutage("emp1", "Payment application outage");
         String second = reportPaymentOutage("emp2", "Payment application down");
 
-        // emp2 may not open emp1's incident, so it is not shown to them; the administrator sees it instead
-        assertEquals(List.of(), list(second, "$.possibleDuplicates"));
+        // emp2 may not open emp1's incident, so they only learn that it exists (its number), not its title or id;
+        // the administrator sees it in full
+        assertEquals(List.of(text(first, "$.incident.incidentNumber")), list(second, "$.possibleDuplicates[*].number"));
+        assertNull(JsonPath.read(second, "$.possibleDuplicates[0].title"));
+        assertNull(JsonPath.read(second, "$.possibleDuplicates[0].id"));
         assertEquals("ASSIGNED", text(second, "$.incident.status"));          // only a warning: the incident exists
 
         long copy = number(second, "$.incident.id");

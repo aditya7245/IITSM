@@ -86,13 +86,16 @@ public class IncidentFacade {
         CreateIncidentCommand command = new CreateIncidentCommand(request.title(), request.description(),
                 request.categoryId(), request.serviceId(), request.impact(), request.urgency(), request.affectedUsers());
         CreateIncidentResult result = incidentService.create(command, actor);
-        // Possible duplicates are only shown if the reporter may open them; otherwise an employee would learn the
-        // titles of other people's incidents. Staff can see every candidate later through similar(id).
-        List<DuplicateCandidate> visible = result.possibleDuplicates().stream()
-                .filter(candidate -> incidents.findById(candidate.id())
-                        .map(other -> access.canView(actor, other)).orElse(false))
+        // A possible duplicate the reporter may not open is still reported, so that people who hit the same outage
+        // find out it is already known, but only by its number and score: no id and no title, because an employee
+        // must not learn what other people reported. Admins see every candidate in full through similar(id).
+        List<DuplicateCandidate> shown = result.possibleDuplicates().stream()
+                .map(candidate -> incidents.findById(candidate.id())
+                        .filter(other -> access.canView(actor, other))
+                        .map(other -> candidate)
+                        .orElseGet(() -> new DuplicateCandidate(null, candidate.number(), null, candidate.score())))
                 .toList();
-        return mapper.toCreateResponse(new CreateIncidentResult(result.incident(), visible));
+        return mapper.toCreateResponse(new CreateIncidentResult(result.incident(), shown));
     }
 
     public IncidentDetailResponse get(Long id) {

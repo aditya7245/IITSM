@@ -86,8 +86,9 @@ export default function ReportIncidentPage() {
               <strong>Similar incidents are already open.</strong> Yours was still recorded; staff may link them.
               <ul className="dup-list">
                 {possibleDuplicates.map((d) => (
-                  <li key={d.id}>
-                    <span className="mono">{d.number}</span> {d.title}{' '}
+                  <li key={d.number}>
+                    <span className="mono">{d.number}</span>{' '}
+                    {d.title ?? <span className="muted">(reported by someone else, details hidden)</span>}{' '}
                     <span className="muted">({Math.round(d.score * 100)}% similar)</span>
                   </li>
                 ))}

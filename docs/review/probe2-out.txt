@@ -1,0 +1,7 @@
+strategy: {"strategy":"LOAD_BASED","available":["LOAD_BASED","ROUND_ROBIN","SKILL_BASED"]}
+workload before sequential: Dev Tech 5/3, Kiran Tech 6/5, Meera Lead 0/5, Sana Tech 8/5
+sequential results: CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED | CLASSIFIED
+workload after sequential: Dev Tech 5/3, Kiran Tech 6/5, Meera Lead 0/5, Sana Tech 8/5
+"Payment application unavailable" -> duplicates: []
+"Payment transaction failing" -> duplicates: ["INC1012 Payment transaction failing 541c7c 0.50"]
+"Unable to make payment" -> duplicates: []
